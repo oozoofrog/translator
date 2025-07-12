@@ -38,3 +38,18 @@ Thumbs.db
 
 # Logs
 *.log
+
+# EPUB 추출 결과 (테스트용)
+dragonlance-legends-01/
+*_output/
+*_extracted/
+
+# 백업 파일들
+epub_extractor_old.py
+*.bak
+*.backup
+
+# 임시 파일들
+.tmp/
+temp/
+*.tmp

@@ -7,7 +7,23 @@
       "Bash(python3:*)",
       "Bash(python:*)",
       "Bash(chmod:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__context7__resolve-library-id",
+      "Bash(mv:*)",
+      "Bash(git add:*)",
+      "Bash(mkdir:*)",
+      "Bash(git commit:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(source:*)",
+      "Bash(pip install:*)",
+      "Bash(./translate_to_korean.sh:*)",
+      "Bash(./build.sh:*)",
+      "Bash(grep:*)",
+      "Bash(ollama list:*)",
+      "Bash(git remote add:*)",
+      "Bash(git reset:*)"
     ],
     "deny": []
   }
