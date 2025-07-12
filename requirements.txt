@@ -1,0 +1,15 @@
+# EPUB 파일 추출기 - Python 의존성
+# 
+# 이 프로젝트는 Python 표준 라이브러리만을 사용합니다.
+# 추가 패키지 설치가 필요하지 않습니다.
+#
+# 사용된 표준 라이브러리:
+# - zipfile: ZIP 파일 처리
+# - xml.etree.ElementTree: XML 파싱
+# - os: 운영체제 인터페이스
+# - re: 정규 표현식
+# - sys: 시스템 파라미터
+# - pathlib: 경로 처리
+# - urllib.parse: URL 파싱
+#
+# Python 버전 요구사항: >= 3.6

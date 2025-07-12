@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sudo apt:*)",
+      "Bash(apt list:*)",
+      "WebFetch(domain:www.python.org)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(chmod:*)",
+      "Bash(git init:*)"
+    ],
+    "deny": []
+  }
+}
