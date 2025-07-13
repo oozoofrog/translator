@@ -12,6 +12,7 @@ import hashlib
 from functools import lru_cache
 
 from .prompts import get_translation_prompt
+from .context_manager import TranslationContextManager
 
 # 전역 설정 import
 import sys
@@ -68,6 +69,9 @@ class OllamaTranslator:
             "cache_misses": 0,
             "total_translations": 0
         }
+        
+        # 컨텍스트 매니저 (나중에 초기화)
+        self.context_manager = None
     
     def check_ollama_available(self) -> bool:
         """Ollama 서비스 사용 가능 여부 확인"""
