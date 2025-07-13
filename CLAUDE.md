@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a complete EPUB translation system that converts English novels to Korean EPUB files through automated extraction, translation, and reassembly. The project features a modular architecture with intelligent text segmentation, genre-specific translation prompts, and full EPUB reconstruction capabilities.
 
+**Requirements**: Python 3.6+ (core extractor uses only standard library, making it highly portable)
+
 ## Development Commands
 
 ### Environment Setup
@@ -35,6 +37,8 @@ pip install -r requirements.txt    # Install dependencies manually
 ./translate_to_korean.sh "english_novel.epub"       # Full automation
 ./translate_to_korean.sh "novel.epub" --genre sci-fi --keep-temp --verbose
 
+# Available genres: fantasy (default), sci-fi, romance, mystery, general
+
 # Ollama management
 ollama serve                       # Start Ollama server
 ollama list                        # List installed models
@@ -58,16 +62,26 @@ translator.translate_chunks("extracted_dir", "translated_dir")
 korean_epub = build_korean_epub("novel.epub", "translated_dir", "novel-ko.epub")
 ```
 
+### Alternative Entry Points
+```bash
+# Standalone script (original implementation)
+python3 epub_extractor.py "novel.epub" --max-chunk-size 3000
+
+# Modular wrapper script
+python3 epub_extractor_modular.py extract "novel.epub" --output "extracted_dir"
+```
+
 ## Architecture Overview
 
 ### Core Modules (epub_extractor/ package)
 - **extractor.py**: Main EPUB extraction engine with metadata handling
 - **chunker.py**: Intelligent text segmentation (paragraph → sentence → word priority)
-- **parser.py**: HTML-to-text parser preserving paragraph structure
+- **parser.py**: HTML-to-text parser preserving paragraph structure (handles `<p>`, `<div>`, `<section>` tags, strips `<script>` and `<style>`)
 - **translator.py**: Ollama-based translator with error recovery and progress tracking
 - **builder.py**: EPUB reassembly engine that reconstructs translated content into valid EPUB
 - **prompts.py**: Genre-specific translation prompts (fantasy, sci-fi, romance, mystery, general)
 - **cli.py**: Command-line interface with subcommands (extract/translate/build)
+- **utils.py**: Utility functions for chapter name extraction and skip detection
 
 ### Complete Translation Pipeline
 ```
@@ -76,12 +90,13 @@ English EPUB → HTML Parsing → Text Extraction → Intelligent Chunking → O
 
 ### Key Design Patterns
 - **Modular separation**: Extraction, parsing, chunking, translation, and building are independent
-- **Intelligent chunking**: Prioritizes paragraph boundaries, falls back to sentences, then words
+- **Intelligent chunking**: 3-tier smart splitting (paragraph → sentence → word boundaries)
 - **Genre-aware translation**: Different prompts for different novel genres
 - **Structure preservation**: Original EPUB structure, metadata, and chapter ordering maintained
 - **Progress persistence**: Resumable operations with JSON progress tracking
 - **Error resilience**: Automatic retries with exponential backoff
 - **One-click automation**: Complete English→Korean EPUB conversion in single command
+- **Standards compliance**: Dublin Core metadata standard for EPUB metadata
 
 ## File Structure and Data Flow
 
@@ -106,6 +121,11 @@ novel-ko.epub              # Final Korean EPUB output
 - **requirements.txt**: `ollama>=0.1.0`, `tqdm>=4.60.0`
 - **chunk_index.json**: Chunk ordering and size statistics
 - **translation_progress.json**: Completed/failed chunk tracking for resumption
+
+### Root Directory Files
+- **epub_extractor.py**: Standalone version of the extractor
+- **epub_extractor_modular.py**: Wrapper for modular functionality
+- **activate.sh**: Complete environment setup with Ollama installation
 
 ## Development Guidelines
 
@@ -134,6 +154,7 @@ novel-ko.epub              # Final Korean EPUB output
 - Default: 1000-3000 characters (optimal for LLM context)
 - Smaller chunks: More accurate translation, potential context loss
 - Larger chunks: Better context preservation, slower processing
+- Smart splitting: Preserves natural text boundaries (paragraphs > sentences > words)
 
 ### Translation Quality Controls
 - Low temperature (0.1) for consistency
@@ -160,3 +181,8 @@ novel-ko.epub              # Final Korean EPUB output
 - Virtual environment activation handled automatically
 - Script arguments passed through to Python CLI interface
 - Error handling and status reporting at shell level
+
+## Known Limitations
+- No automated test suite currently exists (testing is manual with sample EPUB files)
+- Translation quality depends on Ollama model capabilities
+- Large EPUB files may require significant processing time
