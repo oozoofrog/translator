@@ -12,13 +12,13 @@ import re
 class TextChunker:
     """LLM 번역에 적합한 크기로 텍스트를 지능적으로 분할하는 클래스"""
     
-    def __init__(self, max_chunk_size=3000, min_chunk_size=1000):
+    def __init__(self, max_chunk_size=3500, min_chunk_size=1500):
         """
         청킹 객체 초기화
         
         Args:
-            max_chunk_size (int): 최대 청크 크기 (문자 수)
-            min_chunk_size (int): 최소 청크 크기 (문자 수)
+            max_chunk_size (int): 최대 청크 크기 (문자 수, 기본값 3500으로 최적화)
+            min_chunk_size (int): 최소 청크 크기 (문자 수, 기본값 1500으로 최적화)
         """
         self.max_chunk_size = max_chunk_size
         self.min_chunk_size = min_chunk_size

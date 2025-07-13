@@ -25,7 +25,7 @@ from .utils import (
 class EPUBExtractor:
     """EPUB 파일 추출 및 처리 클래스"""
     
-    def __init__(self, epub_path, max_chunk_size=3000, min_chunk_size=1000, create_chunks=True):
+    def __init__(self, epub_path, max_chunk_size=3500, min_chunk_size=1500, create_chunks=True):
         """
         EPUB 추출기 초기화
         

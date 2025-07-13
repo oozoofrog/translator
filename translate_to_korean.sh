@@ -22,9 +22,14 @@ show_help() {
     echo "옵션 설명:"
     echo "  --model MODEL         사용할 Ollama 모델 (기본값: llama3.1:8b)"
     echo "  --genre GENRE         소설 장르 (fantasy/sci-fi/romance/mystery/general, 기본값: fantasy)"
-    echo "  --max-chunk-size N    최대 청크 크기 (기본값: 3000)"
-    echo "  --min-chunk-size N    최소 청크 크기 (기본값: 1000)"
+    echo "  --max-chunk-size N    최대 청크 크기 (기본값: 3500)"
+    echo "  --min-chunk-size N    최소 청크 크기 (기본값: 1500)"
     echo "  --temperature N       번역 온도 0.0-2.0 (기본값: 0.1)"
+    echo "  --max-workers N       병렬 처리 워커 수 (기본값: 4)"
+    echo "  --batch-size N        배치 처리 크기 (기본값: 5)"
+    echo "  --no-parallel         병렬 처리 비활성화"
+    echo "  --no-cache            번역 캐싱 비활성화"
+    echo "  --num-gpu-layers N    GPU에 로드할 레이어 수"
     echo "  --output FILE         출력 EPUB 파일명 (기본값: 원본파일명-ko.epub)"
     echo "  --keep-temp           임시 파일들 보존 (디버깅용)"
     echo "  --resume              중단된 번역 이어서 진행"
@@ -45,9 +50,14 @@ show_help() {
 # 기본값 설정
 MODEL="llama3.1:8b"
 GENRE="fantasy"
-MAX_CHUNK_SIZE=3000
-MIN_CHUNK_SIZE=1000
+MAX_CHUNK_SIZE=3500
+MIN_CHUNK_SIZE=1500
 TEMPERATURE=0.1
+MAX_WORKERS=4
+BATCH_SIZE=5
+NO_PARALLEL=false
+NO_CACHE=false
+NUM_GPU_LAYERS=""
 KEEP_TEMP=false
 RESUME=false
 VERBOSE=false
@@ -95,6 +105,26 @@ while [[ $# -gt 0 ]]; do
             ;;
         --output)
             OUTPUT_FILE="$2"
+            shift 2
+            ;;
+        --max-workers)
+            MAX_WORKERS="$2"
+            shift 2
+            ;;
+        --batch-size)
+            BATCH_SIZE="$2"
+            shift 2
+            ;;
+        --no-parallel)
+            NO_PARALLEL=true
+            shift
+            ;;
+        --no-cache)
+            NO_CACHE=true
+            shift
+            ;;
+        --num-gpu-layers)
+            NUM_GPU_LAYERS="$2"
             shift 2
             ;;
         --keep-temp)
@@ -147,6 +177,8 @@ echo "📖 입력: $EPUB_FILE"
 echo "📄 출력: $OUTPUT_FILE"
 echo "🤖 모델: $MODEL"
 echo "🎭 장르: $GENRE"
+echo "⚡ 병렬 처리: $([[ "$NO_PARALLEL" == "true" ]] && echo "비활성화" || echo "활성화 (워커: $MAX_WORKERS)")"
+echo "💾 캐싱: $([[ "$NO_CACHE" == "true" ]] && echo "비활성화" || echo "활성화")"
 echo "📐 청크: $MIN_CHUNK_SIZE-$MAX_CHUNK_SIZE 문자"
 echo "🌡️ 온도: $TEMPERATURE"
 if [ "$RESUME" = true ]; then
@@ -222,7 +254,21 @@ TRANSLATE_ARGS=(
     "--model" "$MODEL"
     "--genre" "$GENRE"
     "--temperature" "$TEMPERATURE"
+    "--max-workers" "$MAX_WORKERS"
+    "--batch-size" "$BATCH_SIZE"
 )
+
+if [ "$NO_PARALLEL" = true ]; then
+    TRANSLATE_ARGS+=("--no-parallel")
+fi
+
+if [ "$NO_CACHE" = true ]; then
+    TRANSLATE_ARGS+=("--no-cache")
+fi
+
+if [ -n "$NUM_GPU_LAYERS" ]; then
+    TRANSLATE_ARGS+=("--num-gpu-layers" "$NUM_GPU_LAYERS")
+fi
 
 if [ "$RESUME" = true ]; then
     TRANSLATE_ARGS+=("--resume")

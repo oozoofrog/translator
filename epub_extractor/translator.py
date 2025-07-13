@@ -8,6 +8,10 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+import hashlib
+from functools import lru_cache
 
 from .prompts import get_translation_prompt
 
@@ -18,24 +22,49 @@ class OllamaTranslator:
                  model_name="llama3.1:8b",
                  temperature=0.1,
                  max_retries=3,
-                 genre="fantasy"):
+                 genre="fantasy",
+                 max_workers=4,
+                 batch_size=5,
+                 enable_cache=True,
+                 num_gpu_layers=None):
         """
         Args:
             model_name: 사용할 Ollama 모델명
             temperature: 번역 일관성을 위한 낮은 온도값 (0.0-2.0)
             max_retries: 번역 실패시 재시도 횟수
             genre: 소설 장르 (fantasy, sci-fi, romance, mystery, general)
+            max_workers: 병렬 처리 워커 수 (기본값: 4)
+            batch_size: 배치 처리 크기 (기본값: 5)
+            enable_cache: 캐싱 활성화 여부 (기본값: True)
+            num_gpu_layers: GPU에 로드할 레이어 수 (None이면 자동)
         """
         self.model_name = model_name
         self.temperature = temperature
         self.max_retries = max_retries
         self.genre = genre
+        self.max_workers = max_workers
+        self.batch_size = batch_size
+        self.enable_cache = enable_cache
+        self.num_gpu_layers = num_gpu_layers
         
         # Ollama 클라이언트 초기화
         self.client = ollama.Client()
         
         # 장르별 번역 프롬프트 설정
         self.translation_prompt = get_translation_prompt(genre)
+        
+        # 캐시 초기화
+        if enable_cache:
+            self.cache_lock = threading.Lock()
+            self.translation_cache = {}
+        
+        # 통계 추적
+        self.stats_lock = threading.Lock()
+        self.stats = {
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "total_translations": 0
+        }
     
     def check_ollama_available(self) -> bool:
         """Ollama 서비스 사용 가능 여부 확인"""
@@ -78,30 +107,75 @@ class OllamaTranslator:
             print(f"모델 로드 확인 실패: {e}")
             return False
     
+    def _get_cache_key(self, text: str) -> str:
+        """텍스트의 캐시 키 생성"""
+        return hashlib.md5(text.encode('utf-8')).hexdigest()
+    
+    def _check_cache(self, text: str) -> Optional[str]:
+        """캐시에서 번역 확인"""
+        if not self.enable_cache:
+            return None
+        
+        cache_key = self._get_cache_key(text)
+        with self.cache_lock:
+            if cache_key in self.translation_cache:
+                with self.stats_lock:
+                    self.stats["cache_hits"] += 1
+                return self.translation_cache[cache_key]
+        
+        with self.stats_lock:
+            self.stats["cache_misses"] += 1
+        return None
+    
+    def _save_to_cache(self, text: str, translation: str):
+        """번역을 캐시에 저장"""
+        if not self.enable_cache:
+            return
+        
+        cache_key = self._get_cache_key(text)
+        with self.cache_lock:
+            self.translation_cache[cache_key] = translation
+    
     def translate_text(self, text: str) -> Optional[str]:
         """단일 텍스트 블록 번역"""
         if not text.strip():
             return ""
+        
+        # 캐시 확인
+        cached_translation = self._check_cache(text)
+        if cached_translation:
+            return cached_translation
         
         # 프롬프트 생성
         prompt = self.translation_prompt.format(text=text.strip())
         
         for attempt in range(self.max_retries):
             try:
+                # 모델 옵션 설정
+                options = {
+                    'temperature': self.temperature,
+                    'top_p': 0.9,
+                    'top_k': 40,
+                    'repeat_penalty': 1.1
+                }
+                
+                # GPU 레이어 설정이 있으면 추가
+                if self.num_gpu_layers is not None:
+                    options['num_gpu'] = self.num_gpu_layers
+                
                 # Ollama Python 클라이언트로 번역 요청
                 response = self.client.generate(
                     model=self.model_name,
                     prompt=prompt,
-                    options={
-                        'temperature': self.temperature,
-                        'top_p': 0.9,
-                        'top_k': 40,
-                        'repeat_penalty': 1.1
-                    }
+                    options=options
                 )
                 
                 translation = response.get('response', '').strip()
                 if translation:
+                    # 캐시에 저장
+                    self._save_to_cache(text, translation)
+                    with self.stats_lock:
+                        self.stats["total_translations"] += 1
                     return translation
                 else:
                     print(f"경고: 빈 번역 결과 (시도 {attempt + 1}/{self.max_retries})")
@@ -127,8 +201,68 @@ class OllamaTranslator:
         print(f"오류: {self.max_retries}번 시도 후 번역 실패")
         return None
     
-    def translate_chunks(self, input_dir: str, output_dir: str) -> Dict[str, any]:
-        """청크 디렉토리 전체 번역"""
+    def translate_batch(self, texts: List[str]) -> List[Optional[str]]:
+        """배치 텍스트 번역"""
+        results = []
+        for text in texts:
+            result = self.translate_text(text)
+            results.append(result)
+        return results
+    
+    def _translate_chunk_worker(self, chunk_info: Dict, chunks_dir: Path, 
+                                translated_chunks_dir: Path, progress: Dict, 
+                                progress_file: Path, pbar: tqdm) -> Tuple[str, bool]:
+        """단일 청크 번역 워커"""
+        chunk_file = chunk_info["file"]
+        
+        # 이미 완료된 청크 건너뛰기
+        if chunk_file in progress.get("completed", []):
+            return chunk_file, True
+        
+        # 청크 파일 읽기
+        chunk_path = chunks_dir / chunk_file
+        if not chunk_path.exists():
+            print(f"경고: 청크 파일을 찾을 수 없습니다: {chunk_file}")
+            with self.stats_lock:
+                progress.setdefault("failed", []).append(chunk_file)
+            return chunk_file, False
+        
+        try:
+            with open(chunk_path, 'r', encoding='utf-8') as f:
+                original_text = f.read()
+            
+            # 번역 수행
+            translated_text = self.translate_text(original_text)
+            
+            if translated_text:
+                # 번역 결과 저장
+                output_file = translated_chunks_dir / f"ko_{chunk_file}"
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(translated_text)
+                
+                # 진행 상황 업데이트
+                with self.stats_lock:
+                    progress.setdefault("completed", []).append(chunk_file)
+                    if chunk_file in progress.get("failed", []):
+                        progress["failed"].remove(chunk_file)
+                    pbar.update(1)
+                
+                return chunk_file, True
+            else:
+                # 실패 기록
+                with self.stats_lock:
+                    progress.setdefault("failed", []).append(chunk_file)
+                print(f"실패: {chunk_file}")
+                return chunk_file, False
+                
+        except Exception as e:
+            print(f"오류 처리 중 {chunk_file}: {e}")
+            with self.stats_lock:
+                progress.setdefault("failed", []).append(chunk_file)
+            return chunk_file, False
+    
+    def translate_chunks(self, input_dir: str, output_dir: str, use_parallel: bool = True) -> Dict[str, any]:
+        """청크 디렉토리 전체 번역 (병렬 처리 지원)"""
         input_path = Path(input_dir)
         output_path = Path(output_dir)
         
@@ -163,69 +297,72 @@ class OllamaTranslator:
             "completed": len(progress.get("completed", [])),
             "failed": len(progress.get("failed", [])),
             "start_time": time.time(),
-            "model_name": self.model_name
+            "model_name": self.model_name,
+            "parallel_mode": use_parallel,
+            "max_workers": self.max_workers if use_parallel else 1
         }
         
         print(f"📚 번역 시작: {stats['total_chunks']}개 청크")
         print(f"🤖 모델: {self.model_name}")
+        print(f"⚡ 병렬 처리: {'활성화' if use_parallel else '비활성화'} (워커: {stats['max_workers']})")
         print(f"✅ 완료: {stats['completed']}개")
         print(f"❌ 실패: {stats['failed']}개")
+        if self.enable_cache:
+            print(f"💾 캐싱: 활성화")
         print("=" * 50)
         
         # 진행바 설정
         pbar = tqdm(
-            chunk_index["chunks"], 
+            total=len(chunk_index["chunks"]),
             desc="번역 진행",
             initial=stats['completed']
         )
         
-        for chunk_info in pbar:
-            chunk_file = chunk_info["file"]
-            
-            # 이미 완료된 청크 건너뛰기
-            if chunk_file in progress.get("completed", []):
-                continue
-            
-            # 청크 파일 읽기
-            chunk_path = chunks_dir / chunk_file
-            if not chunk_path.exists():
-                print(f"경고: 청크 파일을 찾을 수 없습니다: {chunk_file}")
-                progress.setdefault("failed", []).append(chunk_file)
-                continue
-            
-            try:
-                with open(chunk_path, 'r', encoding='utf-8') as f:
-                    original_text = f.read()
+        if use_parallel:
+            # 병렬 처리
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # 미완료 청크만 추출
+                pending_chunks = [
+                    chunk for chunk in chunk_index["chunks"]
+                    if chunk["file"] not in progress.get("completed", [])
+                ]
                 
-                # 번역 수행
-                pbar.set_description(f"번역 중: {chunk_file}")
-                translated_text = self.translate_text(original_text)
-                
-                if translated_text:
-                    # 번역 결과 저장
-                    output_file = translated_chunks_dir / f"ko_{chunk_file}"
-                    with open(output_file, 'w', encoding='utf-8') as f:
-                        f.write(translated_text)
+                # 배치별로 나누어 처리
+                for i in range(0, len(pending_chunks), self.batch_size):
+                    batch = pending_chunks[i:i + self.batch_size]
                     
-                    # 진행 상황 업데이트
-                    progress.setdefault("completed", []).append(chunk_file)
-                    if chunk_file in progress.get("failed", []):
-                        progress["failed"].remove(chunk_file)
+                    # 배치 단위로 작업 제출
+                    futures = {
+                        executor.submit(
+                            self._translate_chunk_worker,
+                            chunk_info, chunks_dir, translated_chunks_dir,
+                            progress, progress_file, pbar
+                        ): chunk_info for chunk_info in batch
+                    }
                     
-                    stats["completed"] += 1
+                    # 완료된 작업 처리
+                    for future in as_completed(futures):
+                        chunk_file, success = future.result()
+                        if success:
+                            stats["completed"] = len(progress.get("completed", []))
+                        else:
+                            stats["failed"] = len(progress.get("failed", []))
+                        
+                        # 진행 상황 저장 (배치마다)
+                        self._save_progress(progress_file, progress)
+        else:
+            # 순차 처리 (기존 방식)
+            for chunk_info in chunk_index["chunks"]:
+                chunk_file, success = self._translate_chunk_worker(
+                    chunk_info, chunks_dir, translated_chunks_dir,
+                    progress, progress_file, pbar
+                )
+                if success:
+                    stats["completed"] = len(progress.get("completed", []))
                 else:
-                    # 실패 기록
-                    progress.setdefault("failed", []).append(chunk_file)
-                    stats["failed"] += 1
-                    print(f"실패: {chunk_file}")
+                    stats["failed"] = len(progress.get("failed", []))
                 
                 # 진행 상황 저장
-                self._save_progress(progress_file, progress)
-                
-            except Exception as e:
-                print(f"오류 처리 중 {chunk_file}: {e}")
-                progress.setdefault("failed", []).append(chunk_file)
-                stats["failed"] += 1
                 self._save_progress(progress_file, progress)
         
         pbar.close()
@@ -233,6 +370,16 @@ class OllamaTranslator:
         # 번역 완료 통계
         stats["end_time"] = time.time()
         stats["duration"] = stats["end_time"] - stats["start_time"]
+        
+        # 캐시 통계 추가
+        if self.enable_cache:
+            stats["cache_stats"] = {
+                "hits": self.stats["cache_hits"],
+                "misses": self.stats["cache_misses"],
+                "hit_rate": (self.stats["cache_hits"] / 
+                           (self.stats["cache_hits"] + self.stats["cache_misses"]) * 100
+                           if (self.stats["cache_hits"] + self.stats["cache_misses"]) > 0 else 0)
+            }
         
         # 번역 인덱스 생성
         self._create_translation_index(output_path, chunk_index, stats)
@@ -285,22 +432,31 @@ def main():
     parser.add_argument("input_dir", help="입력 디렉토리 (청크가 있는 디렉토리)")
     parser.add_argument("output_dir", help="출력 디렉토리")
     parser.add_argument("--model", default="llama3.1:8b", help="Ollama 모델명")
-    parser.add_argument("--url", default="http://localhost:11434", help="Ollama 서버 URL")
     parser.add_argument("--temperature", type=float, default=0.1, help="번역 온도")
+    parser.add_argument("--genre", default="fantasy", choices=["fantasy", "sci-fi", "romance", "mystery", "general"],
+                       help="소설 장르")
+    parser.add_argument("--max-workers", type=int, default=4, help="병렬 처리 워커 수")
+    parser.add_argument("--batch-size", type=int, default=5, help="배치 처리 크기")
+    parser.add_argument("--no-parallel", action="store_true", help="병렬 처리 비활성화")
+    parser.add_argument("--no-cache", action="store_true", help="캐싱 비활성화")
+    parser.add_argument("--num-gpu-layers", type=int, help="GPU에 로드할 레이어 수")
     
     args = parser.parse_args()
     
     # 번역기 초기화
     translator = OllamaTranslator(
         model_name=args.model,
-        base_url=args.url,
-        temperature=args.temperature
+        temperature=args.temperature,
+        genre=args.genre,
+        max_workers=args.max_workers,
+        batch_size=args.batch_size,
+        enable_cache=not args.no_cache,
+        num_gpu_layers=args.num_gpu_layers
     )
     
     # 연결 확인
-    if not translator.check_ollama_connection():
+    if not translator.check_ollama_available():
         print("❌ Ollama 서버에 연결할 수 없습니다.")
-        print(f"서버 URL: {args.url}")
         print("Ollama가 실행 중인지 확인해주세요.")
         return
     
@@ -313,7 +469,11 @@ def main():
     
     # 번역 수행
     try:
-        stats = translator.translate_chunks(args.input_dir, args.output_dir)
+        stats = translator.translate_chunks(
+            args.input_dir, 
+            args.output_dir,
+            use_parallel=not args.no_parallel
+        )
         
         print("\n" + "=" * 50)
         print("📊 번역 완료!")
@@ -321,6 +481,8 @@ def main():
         print(f"완료: {stats['completed']}개")
         print(f"실패: {stats['failed']}개")
         print(f"소요 시간: {stats['duration'] / 60:.1f}분")
+        if "cache_stats" in stats:
+            print(f"캐시 히트율: {stats['cache_stats']['hit_rate']:.1f}%")
         print(f"번역 결과: {args.output_dir}")
         
     except Exception as e:

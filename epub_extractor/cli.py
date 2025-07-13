@@ -72,17 +72,17 @@ def _add_extract_arguments(parser):
     parser.add_argument(
         '--max-chunk-size',
         type=int,
-        default=3000,
+        default=3500,
         metavar='N',
-        help='최대 청크 크기 (문자 수, 기본값: 3000)'
+        help='최대 청크 크기 (문자 수, 기본값: 3500)'
     )
     
     parser.add_argument(
         '--min-chunk-size',
         type=int,
-        default=1000,
+        default=1500,
         metavar='N',
-        help='최소 청크 크기 (문자 수, 기본값: 1000)'
+        help='최소 청크 크기 (문자 수, 기본값: 1500)'
     )
     
     parser.add_argument(
@@ -151,6 +151,41 @@ def _add_translate_arguments(parser):
         '--resume',
         action='store_true',
         help='이전 번역 작업 이어서 진행'
+    )
+    
+    parser.add_argument(
+        '--max-workers',
+        type=int,
+        default=4,
+        metavar='N',
+        help='병렬 처리 워커 수 (기본값: 4)'
+    )
+    
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=5,
+        metavar='N',
+        help='배치 처리 크기 (기본값: 5)'
+    )
+    
+    parser.add_argument(
+        '--no-parallel',
+        action='store_true',
+        help='병렬 처리 비활성화'
+    )
+    
+    parser.add_argument(
+        '--no-cache',
+        action='store_true',
+        help='번역 캐싱 비활성화'
+    )
+    
+    parser.add_argument(
+        '--num-gpu-layers',
+        type=int,
+        metavar='N',
+        help='GPU에 로드할 레이어 수 (자동 설정시 생략)'
     )
     
     parser.add_argument(
@@ -336,12 +371,18 @@ def print_translate_banner(args):
     Args:
         args: 파싱된 인수 객체
     """
-    print("🌏 Ollama 번역기 v1.0.0")
+    print("🌏 Ollama 번역기 v2.0.0")
     print("=" * 40)
     print(f"📁 입력: {args.input_dir}")
     print(f"📁 출력: {args.output_dir}")
     print(f"🤖 모델: {args.model}")
+    print(f"📚 장르: {args.genre}")
     print(f"🌡️ 온도: {args.temperature}")
+    print(f"⚡ 병렬 처리: {'활성화' if not args.no_parallel else '비활성화'} (워커: {args.max_workers})")
+    print(f"📦 배치 크기: {args.batch_size}")
+    print(f"💾 캐싱: {'활성화' if not args.no_cache else '비활성화'}")
+    if args.num_gpu_layers:
+        print(f"🎮 GPU 레이어: {args.num_gpu_layers}")
     if args.resume:
         print("🔄 모드: 이어서 진행")
     print()
@@ -422,7 +463,11 @@ def run_translate_command(args):
         model_name=args.model,
         temperature=args.temperature,
         max_retries=args.max_retries,
-        genre=args.genre
+        genre=args.genre,
+        max_workers=args.max_workers,
+        batch_size=args.batch_size,
+        enable_cache=not args.no_cache,
+        num_gpu_layers=args.num_gpu_layers
     )
     
     # Ollama 서비스 확인
@@ -448,7 +493,11 @@ def run_translate_command(args):
     print()
     
     # 번역 수행
-    stats = translator.translate_chunks(args.input_dir, args.output_dir)
+    stats = translator.translate_chunks(
+        args.input_dir, 
+        args.output_dir,
+        use_parallel=not args.no_parallel
+    )
     
     # 완료 메시지
     print("\n" + "=" * 50)
@@ -457,6 +506,8 @@ def run_translate_command(args):
     print(f"완료: {stats['completed']}개")
     print(f"실패: {stats['failed']}개")
     print(f"소요 시간: {stats['duration'] / 60:.1f}분")
+    if "cache_stats" in stats:
+        print(f"캐시 히트율: {stats['cache_stats']['hit_rate']:.1f}%")
     print(f"번역 결과: {args.output_dir}")
 
 
