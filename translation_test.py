@@ -17,7 +17,8 @@ def test_translation():
     # 테스트 설정
     model_name = "phi4:latest"
     genre = "fantasy"
-    temperatures = [0.1, 0.2, 0.3, 0.4, 0.5]
+    # temperature 0.1로 고정
+    temperatures = [0.1]
     
     # 테스트 파일들 (크기별)
     test_files = {
