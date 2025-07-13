@@ -7,7 +7,7 @@
 """
 
 # 기본 Ollama 모델 설정
-DEFAULT_MODEL = "deepseek-r1:8b"
+DEFAULT_MODEL = "qwen3:latest"
 
 # 기본 번역 설정
 DEFAULT_TEMPERATURE = 0.1
@@ -15,8 +15,8 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_GENRE = "fantasy"  # None이면 자동 감지
 
 # 기본 청크 크기 설정
-DEFAULT_MAX_CHUNK_SIZE = 3500
-DEFAULT_MIN_CHUNK_SIZE = 1500
+DEFAULT_MAX_CHUNK_SIZE = 2000
+DEFAULT_MIN_CHUNK_SIZE = 1000
 
 # 기본 캐싱 설정
 DEFAULT_ENABLE_CACHE = True
