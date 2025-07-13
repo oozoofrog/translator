@@ -306,6 +306,7 @@ class OllamaTranslator:
         
         # 최대 시도 횟수를 늘려서 다양한 옵션 시도
         max_attempts = max(self.max_retries, 5)
+        last_translation = None  # 마지막으로 받은 번역 (실패한 것이라도)
         
         for attempt in range(max_attempts):
             try:
@@ -327,10 +328,20 @@ class OllamaTranslator:
                 
                 translation = response.get('response', '').strip()
                 if translation:
+                    # 번역을 받았으므로 저장 (검증 전에도)
+                    last_translation = translation
+                    
                     # 한국어 외 언어 검증
                     validated_translation = self._validate_korean_only(translation)
                     if validated_translation is None:
                         print(f"⚠️  한국어 외 언어 감지, 다른 옵션으로 재시도")
+                        # 2번 실패했으면 실패한 번역이라도 사용
+                        if attempt >= 1:  # 2번째 시도부터 (0, 1번째면 2번 실패)
+                            print(f"⚠️  2번 실패 후이므로 문제가 있는 번역이라도 사용: {translation[:100]}...")
+                            # 캐시에는 저장하지 않음 (문제가 있는 번역이므로)
+                            with self.stats_lock:
+                                self.stats["total_translations"] += 1
+                            return translation
                         continue  # 다른 옵션으로 재시도
                     
                     # 캐시에 저장
@@ -360,7 +371,14 @@ class OllamaTranslator:
             if attempt < self.max_retries - 1:
                 time.sleep(2 ** attempt)  # 지수 백오프
         
-        print(f"오류: {self.max_retries}번 시도 후 번역 실패")
+        # 모든 시도가 실패했지만 마지막 번역이 있으면 그것을 사용
+        if last_translation:
+            print(f"⚠️  모든 검증 실패, 하지만 마지막 번역 사용: {last_translation[:100]}...")
+            with self.stats_lock:
+                self.stats["total_translations"] += 1
+            return last_translation
+        
+        print(f"❌ {self.max_retries}번 시도 후 번역 완전 실패")
         return None
     
     def translate_batch(self, texts: List[str]) -> List[Optional[str]]:
@@ -657,16 +675,23 @@ class OllamaTranslator:
                         # 재번역 수행
                         new_translation = self.translate_text(original_text)
                         
-                        if new_translation and self._validate_korean_only(new_translation):
-                            # 새 번역으로 교체
+                        if new_translation:
+                            # 번역을 받았으면 파일 저장 (완벽하지 않아도)
                             with open(ko_file, 'w', encoding='utf-8') as f:
                                 f.write(new_translation)
                             
-                            stats["fixed_files"].append(ko_file.name)
-                            print(f"✅ 재번역 완료: {ko_file.name}")
+                            # 검증을 통과했는지 확인
+                            validated = self._validate_korean_only(new_translation)
+                            if validated:
+                                stats["fixed_files"].append(ko_file.name)
+                                print(f"✅ 재번역 완료: {ko_file.name}")
+                            else:
+                                stats["fixed_files"].append(ko_file.name)
+                                print(f"⚠️  재번역 완료 (문제 있음): {ko_file.name}")
+                                print(f"   → 2번 실패 후 문제가 있는 번역이라도 저장함")
                         else:
                             stats["failed_fixes"].append(ko_file.name)
-                            print(f"❌ 재번역 실패: {ko_file.name}")
+                            print(f"❌ 재번역 완전 실패: {ko_file.name}")
                     else:
                         print(f"⚠️  원본 파일을 찾을 수 없음: {original_file}")
                         stats["failed_fixes"].append(ko_file.name)
