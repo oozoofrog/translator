@@ -311,11 +311,23 @@ class OllamaTranslator:
             print(f"💾 캐싱: 활성화")
         print("=" * 50)
         
-        # 진행바 설정
+        # 진행바 설정 (macOS zsh + oh-my-zsh 호환)
+        # 터미널 환경 체크
+        term = os.environ.get('TERM', '')
+        is_dumb_terminal = term in ['dumb', ''] or os.environ.get('CI') == 'true'
+        
         pbar = tqdm(
             total=len(chunk_index["chunks"]),
             desc="번역 진행",
-            initial=stats['completed']
+            initial=stats['completed'],
+            ncols=80,  # 터미널 너비 고정
+            ascii=True,  # ASCII 문자 사용 (유니코드 문제 방지)
+            bar_format='{desc}: {percentage:3.0f}%|{bar:20}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]',
+            disable=is_dumb_terminal,  # dumb 터미널에서는 비활성화
+            dynamic_ncols=False,  # 동적 너비 비활성화
+            leave=True,  # 완료 후에도 진행바 유지
+            mininterval=0.5,  # 업데이트 최소 간격 (0.5초)
+            maxinterval=2.0   # 업데이트 최대 간격 (2초)
         )
         
         if use_parallel:
