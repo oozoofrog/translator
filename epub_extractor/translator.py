@@ -187,16 +187,43 @@ class OllamaTranslator:
         chinese_pattern = r'[\u4e00-\u9fff]'
         # 일본어 문자 범위 검출 (히라가나, 가타카나, 한자)
         japanese_pattern = r'[\u3040-\u309f\u30a0-\u30ff]'
+        # 특수 문자 패턴 검출 (&O;, &C; 등)
+        special_entity_pattern = r'&[A-Z]+;'
+        # HTML 엔티티 검출
+        html_entity_pattern = r'&[a-zA-Z0-9#]+;'
+        # 이상한 특수문자 조합 검출
+        weird_chars_pattern = r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\-\(\)\[\]{}:;~…—–\'\"''""\n\r\t]'
         
-        if re.search(chinese_pattern, text):
+        # 텍스트 정리
+        cleaned_text = text.strip()
+        
+        # 특수 엔티티 검출 및 제거
+        if re.search(special_entity_pattern, cleaned_text):
+            print(f"⚠️  특수 엔티티 문자 감지됨 (&O;, &C; 등), 재번역 필요")
+            return None
+            
+        # HTML 엔티티 검출
+        if re.search(html_entity_pattern, cleaned_text):
+            print(f"⚠️  HTML 엔티티 감지됨, 재번역 필요")
+            return None
+        
+        # 중국어 문자 검출
+        if re.search(chinese_pattern, cleaned_text):
             print(f"⚠️  중국어 문자 감지됨, 재번역 필요")
             return None
         
-        if re.search(japanese_pattern, text):
+        # 일본어 문자 검출
+        if re.search(japanese_pattern, cleaned_text):
             print(f"⚠️  일본어 문자 감지됨, 재번역 필요")
             return None
+        
+        # 기타 이상한 문자들 검출
+        weird_matches = re.findall(weird_chars_pattern, cleaned_text)
+        if weird_matches:
+            print(f"⚠️  비정상 문자 감지됨: {set(weird_matches)}, 재번역 필요")
+            return None
             
-        return text
+        return cleaned_text
     
     def _get_fallback_options(self, attempt: int) -> dict:
         """실패 시 시도할 다양한 모델 옵션들"""
@@ -259,12 +286,23 @@ class OllamaTranslator:
         
         # 한국어 전용 강화 프롬프트 생성
         enhanced_prompt = f"""System: You are a professional Korean translator. Translate ONLY into Korean (Hangul). 
-FORBIDDEN: Chinese characters (汉字), Japanese hiragana/katakana, any non-Korean text.
-OUTPUT RULE: Korean (한글) only, no other languages.
+
+🚨 ABSOLUTELY FORBIDDEN:
+- Chinese characters (汉字, 中文)
+- Japanese hiragana/katakana (ひらがな, カタカナ) 
+- HTML entities (&amp;, &lt;, &gt;, etc.)
+- Special entities (&O;, &C;, &X; etc.)
+- Any non-Korean characters except basic punctuation
+
+✅ ALLOWED ONLY:
+- Korean Hangul characters (한글)
+- Basic punctuation (.,!?""'' etc.)
+- Numbers and English letters only if absolutely necessary
+- Standard quotation marks
 
 {self.translation_prompt.format(text=text.strip())}
 
-REMINDER: Check your output - Korean characters ONLY!"""
+🔥 FINAL CHECK: Your output must contain ONLY Korean characters and basic punctuation. NO strange symbols, entities, or foreign characters!"""
         
         # 최대 시도 횟수를 늘려서 다양한 옵션 시도
         max_attempts = max(self.max_retries, 5)
