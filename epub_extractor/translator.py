@@ -198,8 +198,57 @@ class OllamaTranslator:
             
         return text
     
+    def _get_fallback_options(self, attempt: int) -> dict:
+        """실패 시 시도할 다양한 모델 옵션들"""
+        fallback_configs = [
+            # 기본 설정
+            {
+                'temperature': self.temperature,
+                'top_p': 0.8,
+                'top_k': 30,
+                'repeat_penalty': 1.2,
+                'seed': 42
+            },
+            # 더 보수적인 설정
+            {
+                'temperature': 0.05,
+                'top_p': 0.6,
+                'top_k': 20,
+                'repeat_penalty': 1.3,
+                'seed': 123
+            },
+            # 다른 시드와 매개변수
+            {
+                'temperature': 0.2,
+                'top_p': 0.7,
+                'top_k': 25,
+                'repeat_penalty': 1.1,
+                'seed': 456
+            },
+            # 최대한 보수적
+            {
+                'temperature': 0.01,
+                'top_p': 0.5,
+                'top_k': 15,
+                'repeat_penalty': 1.4,
+                'seed': 789
+            },
+            # 다른 접근법
+            {
+                'temperature': 0.15,
+                'top_p': 0.9,
+                'top_k': 35,
+                'repeat_penalty': 1.0,
+                'seed': 999
+            }
+        ]
+        
+        # 시도 횟수에 따라 다른 설정 사용
+        config_index = min(attempt, len(fallback_configs) - 1)
+        return fallback_configs[config_index]
+
     def translate_text(self, text: str) -> Optional[str]:
-        """단일 텍스트 블록 번역"""
+        """단일 텍스트 블록 번역 (다양한 옵션으로 재시도)"""
         if not text.strip():
             return ""
         
@@ -208,28 +257,33 @@ class OllamaTranslator:
         if cached_translation:
             return cached_translation
         
-        # 프롬프트 생성
-        prompt = self.translation_prompt.format(text=text.strip())
+        # 한국어 전용 강화 프롬프트 생성
+        enhanced_prompt = f"""System: You are a professional Korean translator. Translate ONLY into Korean (Hangul). 
+FORBIDDEN: Chinese characters (汉字), Japanese hiragana/katakana, any non-Korean text.
+OUTPUT RULE: Korean (한글) only, no other languages.
+
+{self.translation_prompt.format(text=text.strip())}
+
+REMINDER: Check your output - Korean characters ONLY!"""
         
-        for attempt in range(self.max_retries):
+        # 최대 시도 횟수를 늘려서 다양한 옵션 시도
+        max_attempts = max(self.max_retries, 5)
+        
+        for attempt in range(max_attempts):
             try:
-                # 모델 옵션 설정 (한국어 순수성을 위해 조정)
-                options = {
-                    'temperature': self.temperature,
-                    'top_p': 0.8,  # 더 안정적인 출력
-                    'top_k': 30,   # 더 제한적인 선택
-                    'repeat_penalty': 1.2,  # 반복 방지 강화
-                    'seed': 42     # 재현 가능한 결과
-                }
+                # 시도마다 다른 옵션 사용
+                options = self._get_fallback_options(attempt)
                 
                 # GPU 레이어 설정이 있으면 추가
                 if self.num_gpu_layers is not None:
                     options['num_gpu'] = self.num_gpu_layers
                 
+                print(f"   시도 {attempt + 1}: temp={options['temperature']}, top_p={options['top_p']}, seed={options['seed']}")
+                
                 # Ollama Python 클라이언트로 번역 요청
                 response = self.client.generate(
                     model=self.model_name,
-                    prompt=prompt,
+                    prompt=enhanced_prompt,
                     options=options
                 )
                 
@@ -238,16 +292,17 @@ class OllamaTranslator:
                     # 한국어 외 언어 검증
                     validated_translation = self._validate_korean_only(translation)
                     if validated_translation is None:
-                        print(f"경고: 한국어 외 언어 감지, 재시도 (시도 {attempt + 1}/{self.max_retries})")
-                        continue  # 재시도
+                        print(f"⚠️  한국어 외 언어 감지, 다른 옵션으로 재시도")
+                        continue  # 다른 옵션으로 재시도
                     
                     # 캐시에 저장
                     self._save_to_cache(text, validated_translation)
                     with self.stats_lock:
                         self.stats["total_translations"] += 1
+                    print(f"✅ 성공! (시도 {attempt + 1})")
                     return validated_translation
                 else:
-                    print(f"경고: 빈 번역 결과 (시도 {attempt + 1}/{self.max_retries})")
+                    print(f"경고: 빈 번역 결과 (시도 {attempt + 1}/{max_attempts})")
                     
             except ollama.ResponseError as e:
                 print(f"Ollama 응답 오류: {e} (시도 {attempt + 1}/{self.max_retries})")
