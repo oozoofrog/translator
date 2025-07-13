@@ -17,36 +17,44 @@ source venv/bin/activate           # Activate virtual environment manually
 pip install -r requirements.txt    # Install dependencies manually
 ```
 
-### Testing and Execution
+### Quick Start (One-Click Translation)
 ```bash
-# EPUB extraction
-./extract.sh "novel.epub"                           # Basic extraction
-./extract.sh "novel.epub" --max-chunk-size 2000     # Smaller chunks
-./extract.sh "novel.epub" --no-chunks               # Chapters only
-
-# Translation
-./translate.sh "extracted_dir/"                     # Basic translation (output: translated/)
-./translate.sh "extracted_dir/" "output_dir/"       # Custom output directory
-./translate.sh "dir/" --model llama3:8b             # Different model (default output)
-./translate.sh "dir/" --resume                      # Resume interrupted translation
-./translate.sh "dir/" --max-workers 8               # Use 8 parallel workers
-./translate.sh "dir/" --batch-size 10               # Larger batch size
-./translate.sh "dir/" --no-parallel                 # Disable parallel processing
-./translate.sh "dir/" --no-cache                    # Disable translation caching
-./translate.sh "dir/" --num-gpu-layers 35           # Optimize GPU usage
-
-# EPUB Building
-./build.sh "original.epub" "translated/"            # Build Korean EPUB (default translated/)
-./build.sh "original.epub" "translated_dir/"        # Custom translated directory
-./build.sh "original.epub" "translated/" "output.epub" # Custom output name
-
-# Complete Workflow (One-Click Translation)
+# Complete English → Korean EPUB translation
 ./translate_to_korean.sh "english_novel.epub"       # Full automation
-./translate_to_korean.sh "novel.epub" --genre sci-fi --keep-temp --verbose
+./translate_to_korean.sh "novel.epub" --genre sci-fi --verbose
 ./translate_to_korean.sh "novel.epub" --max-workers 8 --batch-size 10  # Fast parallel mode
-./translate_to_korean.sh "novel.epub" --no-cache --num-gpu-layers 40    # Memory optimization
 
 # Available genres: fantasy (default), sci-fi, romance, mystery, general
+```
+
+### Advanced Workflows
+
+#### Step-by-Step Translation
+```bash
+# 1. Extract and prepare EPUB for translation
+python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
+
+# 2. Translate chunks (outputs to translated/ by default)
+./translate.sh "novel/"                             # Basic translation
+./translate.sh "novel/" --max-workers 8             # Fast parallel translation
+./translate.sh "novel/" --model llama3:8b           # Different model
+./translate.sh "novel/" --resume                    # Resume interrupted translation
+
+# 3. Build Korean EPUB
+./build.sh "novel.epub" "translated/" "novel-ko.epub"
+```
+
+#### Translation-Only Workflow
+```bash
+# If you already have extracted chunks
+./translate.sh "extracted_dir/"                     # Output: translated/
+./translate.sh "extracted_dir/" "custom_output/"    # Custom output directory
+```
+
+#### Performance Optimization
+```bash
+# High-speed translation with all optimizations
+./translate.sh "dir/" --max-workers 8 --batch-size 10 --num-gpu-layers 35
 
 # Ollama management
 ollama serve                       # Start Ollama server
@@ -80,11 +88,13 @@ korean_epub = build_korean_epub("novel.epub", "translated_dir", "novel-ko.epub")
 
 ### Alternative Entry Points
 ```bash
-# Standalone script (original implementation)
-python3 epub_extractor.py "novel.epub" --max-chunk-size 3000
+# Direct CLI usage
+python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
+python3 -m epub_extractor.cli translate "extracted_dir/"
+python3 -m epub_extractor.cli build "novel.epub" "translated/"
 
-# Modular wrapper script
-python3 epub_extractor_modular.py extract "novel.epub" --output "extracted_dir"
+# Legacy standalone script (original implementation)
+python3 epub_extractor.py "novel.epub" --max-chunk-size 3000
 ```
 
 ## Architecture Overview

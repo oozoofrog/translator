@@ -212,12 +212,12 @@ echo ""
 # 작업 디렉토리 생성
 mkdir -p "$WORK_DIR"
 
-# 1단계: EPUB 추출
-echo "🔄 1단계: EPUB 파일 추출 및 청크 분할"
+# 1단계: EPUB 번역 전처리
+echo "🔄 1단계: EPUB 파일 번역 전처리"
 echo "========================================"
 
 if [ "$RESUME" = true ] && [ -d "$EXTRACTED_DIR" ]; then
-    echo "✅ 추출 결과 발견, 건너뛰기: $EXTRACTED_DIR"
+    echo "✅ 전처리 결과 발견, 건너뛰기: $EXTRACTED_DIR"
 else
     EXTRACT_ARGS=(
         "extract"
@@ -234,11 +234,11 @@ else
     cd "$SCRIPT_DIR" && python3 -m epub_extractor.cli "${EXTRACT_ARGS[@]}"
     
     if [ $? -ne 0 ]; then
-        echo "❌ EPUB 추출 실패"
+        echo "❌ EPUB 전처리 실패"
         exit 1
     fi
     
-    echo "✅ EPUB 추출 완료"
+    echo "✅ EPUB 전처리 완료"
 fi
 
 echo ""

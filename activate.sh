@@ -165,6 +165,7 @@ if setup_python_environment; then
     echo "💡 번역 지원 장르: fantasy, sci-fi, romance, mystery, general"
     echo "🤖 기본 모델: llama3.1:8b"
     echo ""
+    ollama start
 else
     echo "❌ Python 환경 설정에 실패했습니다."
     exit 1
