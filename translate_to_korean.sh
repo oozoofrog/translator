@@ -48,7 +48,7 @@ show_help() {
 }
 
 # 기본값 설정
-MODEL="llama3-ko:8b"
+MODEL="llama3-ko-simple:8b"
 GENRE="fantasy"
 MAX_CHUNK_SIZE=3500
 MIN_CHUNK_SIZE=1500

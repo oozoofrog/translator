@@ -62,7 +62,7 @@ check_and_install_ollama() {
 
 # 기본 번역 모델 다운로드
 download_translation_model() {
-    local model_name="llama3-ko:8b"
+    local model_name="llama3-ko-simple:8b"
     
     echo "🤖 번역 모델 확인 중..."
     
