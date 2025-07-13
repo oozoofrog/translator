@@ -39,7 +39,10 @@
       "Bash(echo:*)",
       "Bash(env)",
       "Bash(OLLAMA_MODELS=\"/Volumes/eyedisk/ollama-models\" ollama list)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(ollama rm:*)",
+      "Bash(ollama search:*)"
     ],
     "deny": []
   }
