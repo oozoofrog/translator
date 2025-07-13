@@ -116,7 +116,9 @@ def _add_translate_arguments(parser):
     
     parser.add_argument(
         'output_dir',
-        help='번역 결과를 저장할 디렉토리'
+        nargs='?',
+        default='translated',
+        help='번역 결과를 저장할 디렉토리 (기본값: translated)'
     )
     
     parser.add_argument(

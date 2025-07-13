@@ -25,18 +25,20 @@ pip install -r requirements.txt    # Install dependencies manually
 ./extract.sh "novel.epub" --no-chunks               # Chapters only
 
 # Translation
-./translate.sh "extracted_dir/" "output_dir/"       # Basic translation
-./translate.sh "dir/" "out/" --model llama3:8b      # Different model
-./translate.sh "dir/" "out/" --resume               # Resume interrupted translation
-./translate.sh "dir/" "out/" --max-workers 8        # Use 8 parallel workers
-./translate.sh "dir/" "out/" --batch-size 10        # Larger batch size
-./translate.sh "dir/" "out/" --no-parallel          # Disable parallel processing
-./translate.sh "dir/" "out/" --no-cache             # Disable translation caching
-./translate.sh "dir/" "out/" --num-gpu-layers 35    # Optimize GPU usage
+./translate.sh "extracted_dir/"                     # Basic translation (output: translated/)
+./translate.sh "extracted_dir/" "output_dir/"       # Custom output directory
+./translate.sh "dir/" --model llama3:8b             # Different model (default output)
+./translate.sh "dir/" --resume                      # Resume interrupted translation
+./translate.sh "dir/" --max-workers 8               # Use 8 parallel workers
+./translate.sh "dir/" --batch-size 10               # Larger batch size
+./translate.sh "dir/" --no-parallel                 # Disable parallel processing
+./translate.sh "dir/" --no-cache                    # Disable translation caching
+./translate.sh "dir/" --num-gpu-layers 35           # Optimize GPU usage
 
 # EPUB Building
-./build.sh "original.epub" "translated_dir/"        # Build Korean EPUB
-./build.sh "original.epub" "translated_dir/" "output.epub" # Custom output name
+./build.sh "original.epub" "translated/"            # Build Korean EPUB (default translated/)
+./build.sh "original.epub" "translated_dir/"        # Custom translated directory
+./build.sh "original.epub" "translated/" "output.epub" # Custom output name
 
 # Complete Workflow (One-Click Translation)
 ./translate_to_korean.sh "english_novel.epub"       # Full automation

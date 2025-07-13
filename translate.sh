@@ -11,10 +11,11 @@ show_help() {
     echo "🌏 Ollama 번역기 - 사용법"
     echo "======================================"
     echo "기본 사용법:"
-    echo "  $0 \"추출된_디렉토리\" \"번역_출력_디렉토리\""
+    echo "  $0 \"추출된_디렉토리\"                        # 기본 출력: translated/"
+    echo "  $0 \"추출된_디렉토리\" \"번역_출력_디렉토리\"    # 출력 디렉토리 지정"
     echo ""
     echo "고급 옵션:"
-    echo "  $0 \"novel/\" \"translated/\" --model llama3.1:8b"
+    echo "  $0 \"novel/\" --model llama3.1:8b            # 기본 출력에 다른 모델 사용"
     echo "  $0 \"novel/\" \"translated/\" --temperature 0.1"
     echo "  $0 \"novel/\" \"translated/\" --resume"
     echo ""
@@ -33,9 +34,10 @@ show_help() {
     echo "  --help, -h            이 도움말 표시"
     echo ""
     echo "예시:"
-    echo "  $0 \"dragonlance-legends-01/\" \"translated/\"     # 기본 설정으로 번역"
-    echo "  $0 \"novel/\" \"ko_novel/\" --model llama3:8b        # 다른 모델 사용"
-    echo "  $0 \"novel/\" \"ko_novel/\" --resume                # 중단된 번역 이어서 진행"
+    echo "  $0 \"extracted_novel/\"                         # translated/ 폴더에 번역"
+    echo "  $0 \"extracted_novel/\" \"korean_novel/\"         # 지정 폴더에 번역"
+    echo "  $0 \"novel/\" --model llama3:8b                 # 다른 모델로 번역"
+    echo "  $0 \"novel/\" --resume                          # 중단된 번역 이어서 진행"
     echo ""
     echo "요구사항:"
     echo "  - Ollama가 실행 중이어야 함"
@@ -44,8 +46,8 @@ show_help() {
 }
 
 # 인수 확인
-if [ $# -lt 2 ]; then
-    echo "❌ 입력 디렉토리와 출력 디렉토리를 지정해주세요."
+if [ $# -lt 1 ]; then
+    echo "❌ 입력 디렉토리를 지정해주세요."
     echo ""
     show_help
     exit 1
@@ -58,8 +60,13 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
 fi
 
 INPUT_DIR="$1"
-OUTPUT_DIR="$2"
-shift 2  # 첫 두 개 인수 제거
+OUTPUT_DIR="${2:-translated}"  # 두 번째 인수가 없으면 'translated' 사용
+shift 1  # 첫 번째 인수만 제거
+if [ $# -gt 0 ] && [[ ! "$1" =~ ^-- ]]; then
+    # 두 번째 인수가 옵션이 아니면 출력 디렉토리로 사용
+    OUTPUT_DIR="$1"
+    shift 1
+fi
 
 # 입력 디렉토리 존재 확인
 if [ ! -d "$INPUT_DIR" ]; then

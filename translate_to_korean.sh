@@ -169,7 +169,7 @@ fi
 BASE_NAME=$(basename "$EPUB_FILE" .epub)
 WORK_DIR="${BASE_NAME}_translation_work"
 EXTRACTED_DIR="$WORK_DIR/extracted"
-TRANSLATED_DIR="$WORK_DIR/translated"
+TRANSLATED_DIR="translated"  # 기본 translated 디렉토리 사용
 
 echo "📚 영문 EPUB → 한글 EPUB 번역기"
 echo "========================================"

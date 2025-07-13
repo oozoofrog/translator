@@ -23,7 +23,9 @@
       "Bash(grep:*)",
       "Bash(ollama list:*)",
       "Bash(git remote add:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(timeout 60 python3 -m epub_extractor.cli translate:*)",
+      "Bash(./translate.sh:*)"
     ],
     "deny": []
   }

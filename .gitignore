@@ -44,6 +44,12 @@ dragonlance-legends-01/
 *_output/
 *_extracted/
 
+# 번역 작업 디렉토리
+translated/
+*_translation_work/
+*_translated/
+*-ko.epub
+
 # 백업 파일들
 epub_extractor_old.py
 *.bak
