@@ -59,7 +59,7 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 # Ollama management
 ollama serve                       # Start Ollama server
 ollama list                        # List installed models
-ollama pull qwen2.5:14b           # Download translation model
+ollama pull llama3-ko:8b           # Download translation model
 ```
 
 ### Using the Modular API
@@ -73,7 +73,7 @@ extractor.extract("extracted_dir")
 
 # 2. Translate chunks
 translator = OllamaTranslator(
-    model_name="qwen2.5:14b", 
+    model_name="llama3-ko:8b", 
     genre="fantasy",
     max_workers=4,          # Parallel processing
     batch_size=5,           # Batch size

@@ -48,7 +48,7 @@ show_help() {
 }
 
 # 기본값 설정
-MODEL="qwen2.5:14b"
+MODEL="llama3-ko:8b"
 GENRE="fantasy"
 MAX_CHUNK_SIZE=3500
 MIN_CHUNK_SIZE=1500

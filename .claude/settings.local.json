@@ -27,7 +27,11 @@
       "Bash(timeout 60 python3 -m epub_extractor.cli translate:*)",
       "Bash(./translate.sh:*)",
       "Bash(rm:*)",
-      "Bash(ollama pull:*)"
+      "Bash(ollama pull:*)",
+      "WebFetch(domain:huggingface.co)",
+      "Bash(wget:*)",
+      "Bash(ollama create:*)",
+      "Bash(ollama run:*)"
     ],
     "deny": []
   }

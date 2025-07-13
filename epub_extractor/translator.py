@@ -19,7 +19,7 @@ class OllamaTranslator:
     """Ollama Python 라이브러리를 사용한 영어→한국어 번역기"""
     
     def __init__(self, 
-                 model_name="qwen2.5:14b",
+                 model_name="llama3-ko:8b",
                  temperature=0.1,
                  max_retries=3,
                  genre=None,  # None이면 자동 감지
@@ -192,7 +192,7 @@ class OllamaTranslator:
         # HTML 엔티티 검출
         html_entity_pattern = r'&[a-zA-Z0-9#]+;'
         # 이상한 특수문자 조합 검출
-        weird_chars_pattern = r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\-\(\)\[\]{}:;~…—–\'\"''""\n\r\t]'
+        weird_chars_pattern = r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\(\)\[\]{}:;~…—–\'\"''""\n\r\t-]'
         
         # 텍스트 정리
         cleaned_text = text.strip()
@@ -738,7 +738,7 @@ class OllamaTranslator:
             problems.append("HTML 엔티티")
         
         # 이상한 특수문자 검출
-        weird_chars = re.findall(r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\-\(\)\[\]{}:;~…—–\'\"''""\n\r\t]', text)
+        weird_chars = re.findall(r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\(\)\[\]{}:;~…—–\'\"''""\n\r\t-]', text)
         if weird_chars:
             problems.append("비정상 문자")
         
