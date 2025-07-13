@@ -35,6 +35,7 @@ def create_parser():
   %(prog)s translate novel/ translated/           # 번역 수행
   %(prog)s translate novel/ translated/ --model llama3.1:8b
   %(prog)s build novel.epub translated/           # 한글 EPUB 생성
+  %(prog)s fix translated/                        # 번역 문제 감지 및 재번역
 
 청크 크기 가이드라인:
   - 작은 청크 (1000-2000자): 더 정확한 번역, 문맥 손실 가능
@@ -57,6 +58,10 @@ def create_parser():
     # build 명령어
     build_parser = subparsers.add_parser('build', help='번역된 텍스트로 한글 EPUB 생성')
     build_parser = _add_build_arguments(build_parser)
+    
+    # fix 명령어
+    fix_parser = subparsers.add_parser('fix', help='번역된 파일의 문제점 감지 및 재번역')
+    fix_parser = _add_fix_arguments(fix_parser)
     
     return parser
 
@@ -216,6 +221,50 @@ def _add_build_arguments(parser):
         '--output', '-o',
         metavar='FILE',
         help='출력 EPUB 파일 경로 (기본값: 원본파일명-ko.epub)'
+    )
+    
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='상세한 출력 표시'
+    )
+    
+    return parser
+
+
+def _add_fix_arguments(parser):
+    """재번역 명령어 인수 추가"""
+    
+    parser.add_argument(
+        'translated_dir',
+        help='번역된 파일들이 있는 디렉토리'
+    )
+    
+    parser.add_argument(
+        '--model',
+        default='qwen2.5:14b',
+        help='사용할 Ollama 모델명 (기본값: qwen2.5:14b)'
+    )
+    
+    parser.add_argument(
+        '--temperature',
+        type=float,
+        default=0.1,
+        help='번역 온도 (기본값: 0.1)'
+    )
+    
+    parser.add_argument(
+        '--max-retries',
+        type=int,
+        default=3,
+        help='번역 실패시 재시도 횟수 (기본값: 3)'
+    )
+    
+    parser.add_argument(
+        '--genre',
+        choices=get_genre_list(),
+        default=None,
+        help='소설 장르 (기본값: 자동 감지, 선택: fantasy, sci-fi, romance, mystery, horror, general)'
     )
     
     parser.add_argument(
@@ -554,6 +603,68 @@ def run_build_command(args):
         sys.exit(1)
 
 
+def run_fix_command(args):
+    """
+    재번역 명령어 실행
+    
+    Args:
+        args: 파싱된 인수 객체
+    """
+    # 인수 검증
+    if not os.path.exists(args.translated_dir):
+        print(f"❌ 번역 디렉토리를 찾을 수 없습니다: {args.translated_dir}")
+        sys.exit(1)
+    
+    # 시작 배너 출력
+    if args.verbose or True:  # 항상 표시
+        print("=" * 50)
+        print("🔧 번역 문제점 검사 및 재번역")
+        print("=" * 50)
+        print(f"번역 디렉토리: {args.translated_dir}")
+        print(f"모델: {args.model}")
+        print(f"장르: {args.genre or '자동 감지'}")
+        print("=" * 50)
+    
+    try:
+        # 번역기 초기화
+        translator = OllamaTranslator(
+            model_name=args.model,
+            temperature=args.temperature,
+            max_retries=args.max_retries,
+            genre=args.genre
+        )
+        
+        # Ollama 연결 확인
+        if not translator.check_ollama_available():
+            print("❌ Ollama 서버에 연결할 수 없습니다.")
+            print("Ollama가 실행 중인지 확인해주세요: ollama serve")
+            sys.exit(1)
+        
+        if not translator.check_model_available():
+            print(f"❌ 모델 '{args.model}'을 찾을 수 없습니다.")
+            print("사용 가능한 모델 목록을 확인해주세요: ollama list")
+            sys.exit(1)
+        
+        print("✅ Ollama 연결 확인 완료")
+        
+        # 재번역 수행
+        stats = translator.fix_translated_chunks(args.translated_dir)
+        
+        # 성공 메시지
+        if len(stats["fixed_files"]) > 0:
+            print("\n🎉 재번역이 완료되었습니다!")
+            print("이제 build 명령어로 새로운 EPUB을 생성할 수 있습니다.")
+        else:
+            print("\n✨ 모든 번역 파일이 정상적입니다!")
+        
+    except Exception as e:
+        print(f"\n❌ 재번역 중 오류 발생: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
 def main():
     """
     메인 실행 함수
@@ -575,6 +686,8 @@ def main():
             run_translate_command(args)
         elif args.command == 'build':
             run_build_command(args)
+        elif args.command == 'fix':
+            run_fix_command(args)
         else:
             print(f"❌ 알 수 없는 명령어: {args.command}")
             sys.exit(1)

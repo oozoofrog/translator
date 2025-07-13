@@ -587,6 +587,148 @@ class OllamaTranslator:
         
         return stats
     
+    def fix_translated_chunks(self, translated_dir: str) -> Dict[str, any]:
+        """번역된 청크들에서 문제가 있는 부분을 감지하고 재번역"""
+        translated_path = Path(translated_dir)
+        
+        if not translated_path.exists():
+            raise FileNotFoundError(f"번역 디렉토리를 찾을 수 없습니다: {translated_dir}")
+        
+        translated_chunks_dir = translated_path / "translated_chunks"
+        if not translated_chunks_dir.exists():
+            raise FileNotFoundError(f"번역된 청크 디렉토리를 찾을 수 없습니다: {translated_chunks_dir}")
+        
+        # 번역된 파일들 검사
+        ko_files = list(translated_chunks_dir.glob("ko_*.txt"))
+        
+        stats = {
+            "total_files": len(ko_files),
+            "problem_files": [],
+            "fixed_files": [],
+            "failed_fixes": [],
+            "start_time": time.time()
+        }
+        
+        print(f"🔍 번역된 파일 검사 중: {len(ko_files)}개 파일")
+        print("=" * 50)
+        
+        pbar = tqdm(ko_files, desc="문제 파일 검사", ncols=80, ascii=True)
+        
+        for ko_file in pbar:
+            try:
+                with open(ko_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 문제 있는 부분 감지
+                problems = self._detect_translation_problems(content)
+                
+                if problems:
+                    stats["problem_files"].append({
+                        "file": ko_file.name,
+                        "problems": problems
+                    })
+                    
+                    pbar.set_description(f"재번역: {ko_file.name}")
+                    
+                    # 원본 청크 파일 찾기
+                    original_file = ko_file.name.replace("ko_", "")
+                    original_path = None
+                    
+                    # 원본 청크 디렉토리에서 찾기
+                    possible_paths = [
+                        translated_path.parent / "chunks" / original_file,
+                        translated_path / "chunks" / original_file,
+                        Path(translated_dir).parent / original_file.replace("_", "/").replace(".txt", "") / "chunks" / original_file
+                    ]
+                    
+                    for path in possible_paths:
+                        if path.exists():
+                            original_path = path
+                            break
+                    
+                    if original_path and original_path.exists():
+                        # 원본 텍스트 읽기
+                        with open(original_path, 'r', encoding='utf-8') as f:
+                            original_text = f.read()
+                        
+                        print(f"\n🔧 재번역 시도: {ko_file.name}")
+                        print(f"   감지된 문제: {', '.join(problems)}")
+                        
+                        # 재번역 수행
+                        new_translation = self.translate_text(original_text)
+                        
+                        if new_translation and self._validate_korean_only(new_translation):
+                            # 새 번역으로 교체
+                            with open(ko_file, 'w', encoding='utf-8') as f:
+                                f.write(new_translation)
+                            
+                            stats["fixed_files"].append(ko_file.name)
+                            print(f"✅ 재번역 완료: {ko_file.name}")
+                        else:
+                            stats["failed_fixes"].append(ko_file.name)
+                            print(f"❌ 재번역 실패: {ko_file.name}")
+                    else:
+                        print(f"⚠️  원본 파일을 찾을 수 없음: {original_file}")
+                        stats["failed_fixes"].append(ko_file.name)
+                        
+            except Exception as e:
+                print(f"오류 처리 중 {ko_file.name}: {e}")
+                stats["failed_fixes"].append(ko_file.name)
+        
+        pbar.close()
+        
+        # 결과 출력
+        stats["end_time"] = time.time()
+        stats["duration"] = stats["end_time"] - stats["start_time"]
+        
+        print("\n" + "=" * 50)
+        print("🔧 부분 재번역 완료!")
+        print(f"총 파일: {stats['total_files']}개")
+        print(f"문제 파일: {len(stats['problem_files'])}개")
+        print(f"수정 완료: {len(stats['fixed_files'])}개")
+        print(f"수정 실패: {len(stats['failed_fixes'])}개")
+        print(f"소요 시간: {stats['duration'] / 60:.1f}분")
+        
+        return stats
+    
+    def _detect_translation_problems(self, text: str) -> List[str]:
+        """번역 텍스트에서 문제점들을 감지"""
+        import re
+        problems = []
+        
+        # 중국어 문자 검출
+        if re.search(r'[\u4e00-\u9fff]', text):
+            problems.append("중국어 문자")
+        
+        # 일본어 문자 검출
+        if re.search(r'[\u3040-\u309f\u30a0-\u30ff]', text):
+            problems.append("일본어 문자")
+        
+        # 특수 엔티티 검출
+        if re.search(r'&[A-Z]+;', text):
+            problems.append("특수 엔티티")
+        
+        # HTML 엔티티 검출
+        if re.search(r'&[a-zA-Z0-9#]+;', text):
+            problems.append("HTML 엔티티")
+        
+        # 이상한 특수문자 검출
+        weird_chars = re.findall(r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''\-\(\)\[\]{}:;~…—–\'\"''""\n\r\t]', text)
+        if weird_chars:
+            problems.append("비정상 문자")
+        
+        # 빈 번역이나 너무 짧은 번역
+        if len(text.strip()) < 10:
+            problems.append("불완전한 번역")
+        
+        # 영어가 너무 많이 남아있는 경우 (한글 비율이 50% 미만)
+        korean_chars = len(re.findall(r'[\uac00-\ud7af]', text))
+        total_chars = len(re.sub(r'\s', '', text))
+        if total_chars > 0 and korean_chars / total_chars < 0.5:
+            problems.append("번역 불충분")
+        
+        return problems
+    
     def _load_progress(self, progress_file: Path) -> Dict:
         """번역 진행 상황 로드"""
         if progress_file.exists():
