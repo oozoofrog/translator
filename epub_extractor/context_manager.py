@@ -216,3 +216,102 @@ class TranslationContextManager:
                     suggestions[original] = info['korean']
         
         return suggestions
+    
+    def apply_context_corrections(self, original_text: str, translated_text: str) -> str:
+        """번역 결과에 컨텍스트 정보를 적용하여 일관성 개선"""
+        corrected_text = translated_text
+        
+        # 고유명사 일관성 적용
+        for category in ['characters', 'places', 'terms']:
+            for original, info in self.context[category].items():
+                korean = info.get('korean', '').strip()
+                if korean and original in original_text:
+                    # 원문에 있는 고유명사가 번역문에서도 일관되게 사용되도록
+                    import re
+                    # 단어 경계를 고려한 치환
+                    pattern = r'\b' + re.escape(original) + r'\b'
+                    if re.search(pattern, original_text):
+                        corrected_text = re.sub(pattern, korean, corrected_text)
+        
+        return corrected_text
+    
+    def update_translation_from_user(self, original: str, korean: str, category: str = "terms"):
+        """사용자가 수정한 번역을 컨텍스트에 반영"""
+        if category in ['characters', 'places', 'terms']:
+            if original not in self.context[category]:
+                self.context[category][original] = {
+                    "original": original,
+                    "korean": "",
+                    "description": ""
+                }
+            
+            self.context[category][original]['korean'] = korean
+            self.save_context()
+            print(f"✅ 번역 업데이트: {original} → {korean}")
+    
+    def get_untranslated_terms(self) -> Dict[str, List[str]]:
+        """아직 번역되지 않은 용어들 목록 반환"""
+        untranslated = {
+            "characters": [],
+            "places": [],
+            "terms": []
+        }
+        
+        for category in ['characters', 'places', 'terms']:
+            for original, info in self.context[category].items():
+                if not info.get('korean', '').strip():
+                    untranslated[category].append(original)
+        
+        return untranslated
+    
+    def review_and_update_context(self, chunk_file: str = None):
+        """컨텍스트 검토 및 업데이트 인터페이스"""
+        print("\n" + "="*50)
+        print("📋 번역 컨텍스트 검토 및 업데이트")
+        print("="*50)
+        
+        # 미번역 용어 표시
+        untranslated = self.get_untranslated_terms()
+        total_untranslated = sum(len(terms) for terms in untranslated.values())
+        
+        if total_untranslated == 0:
+            print("✅ 모든 용어가 번역되었습니다.")
+            return
+        
+        print(f"\n📊 미번역 용어: {total_untranslated}개")
+        
+        for category, terms in untranslated.items():
+            if terms:
+                category_name = {"characters": "인물", "places": "지명", "terms": "용어"}[category]
+                print(f"\n🔸 {category_name} ({len(terms)}개):")
+                for i, term in enumerate(terms[:10], 1):  # 최대 10개만 표시
+                    desc = self.context[category][term].get('description', '')
+                    desc_text = f" - {desc}" if desc else ""
+                    print(f"  {i}. {term}{desc_text}")
+                
+                if len(terms) > 10:
+                    print(f"  ... 외 {len(terms) - 10}개")
+        
+        print(f"\n💡 컨텍스트 파일 위치: {self.context_file}")
+        print("   이 파일을 직접 편집하여 번역을 추가할 수 있습니다.")
+        
+    def retranslate_with_context(self, original_text: str, translator) -> str:
+        """컨텍스트 정보를 반영하여 재번역"""
+        context_info = self.get_context_for_translation()
+        
+        if not context_info:
+            print("⚠️  적용할 컨텍스트 정보가 없습니다.")
+            return translator.translate_text(original_text)
+        
+        # 컨텍스트 정보를 포함한 번역
+        enhanced_text = f"""=== 번역 컨텍스트 정보 ==={context_info}
+
+=== 원본 텍스트 ===
+{original_text}"""
+        
+        translated = translator.translate_text(enhanced_text)
+        
+        # 컨텍스트 정보를 적용한 후처리
+        corrected = self.apply_context_corrections(original_text, translated)
+        
+        return corrected

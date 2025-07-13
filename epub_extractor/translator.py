@@ -292,8 +292,31 @@ class OllamaTranslator:
         if cached_translation:
             return cached_translation
         
-        # 간단한 번역 프롬프트 생성
-        simple_prompt = f"""다음 영어 텍스트를 자연스러운 한국어로 번역해주세요. 한국어만 사용하고, 다른 언어나 특수문자는 사용하지 마세요.
+        # 컨텍스트 정보 적용
+        context_info = ""
+        if self.context_manager:
+            # 컨텍스트 분석 (처음 몇 번만)
+            if self.context_manager.context['book_info']['analyzed_chunks'] < 5:
+                analysis_result = self.context_manager.analyze_text_for_context(text, self)
+                if analysis_result:
+                    self.context_manager.update_context(analysis_result)
+            
+            # 번역용 컨텍스트 정보 가져오기
+            context_info = self.context_manager.get_context_for_translation()
+        
+        # 컨텍스트 정보가 있으면 프롬프트에 포함
+        if context_info:
+            simple_prompt = f"""다음 영어 텍스트를 자연스러운 한국어로 번역해주세요. 아래 컨텍스트 정보를 참고하여 일관된 번역을 해주세요.
+
+{context_info}
+
+영어 텍스트:
+{text.strip()}
+
+한국어 번역:"""
+        else:
+            # 기본 번역 프롬프트
+            simple_prompt = f"""다음 영어 텍스트를 자연스러운 한국어로 번역해주세요. 한국어만 사용하고, 다른 언어나 특수문자는 사용하지 마세요.
 
 영어 텍스트:
 {text.strip()}
@@ -338,6 +361,10 @@ class OllamaTranslator:
                             self.stats["total_translations"] += 1
                             return translation
                         continue  # 다른 옵션으로 재시도
+                    
+                    # 컨텍스트 일관성 적용
+                    if self.context_manager:
+                        validated_translation = self.context_manager.apply_context_corrections(text, validated_translation)
                     
                     # 캐시에 저장
                     self._save_to_cache(text, validated_translation)
@@ -497,6 +524,22 @@ class OllamaTranslator:
                 print(f"⚠️  장르 감지 실패, 기본값 사용: {self.genre}")
         else:
             print(f"📚 장르: {self.genre} (사용자 지정)")
+
+        # 컨텍스트 매니저 초기화 (책 제목 추출)
+        try:
+            info_file = input_path / "info.json"
+            book_title = "Unknown"
+            if info_file.exists():
+                with open(info_file, 'r', encoding='utf-8') as f:
+                    book_info = json.load(f)
+                    book_title = book_info.get('title', 'Unknown')
+            
+            # 컨텍스트 매니저 생성
+            self.context_manager = TranslationContextManager(book_title, str(output_path))
+            print(f"📋 번역 컨텍스트 활성화: {book_title}")
+        except Exception as e:
+            print(f"⚠️  컨텍스트 매니저 초기화 실패: {e}")
+            self.context_manager = None
 
         print(f"📚 번역 시작: {stats['total_chunks']}개 청크")
         print(f"🤖 모델: {self.model_name}")
