@@ -179,6 +179,25 @@ class OllamaTranslator:
         with self.cache_lock:
             self.translation_cache[cache_key] = translation
     
+    def _validate_korean_only(self, text: str) -> str:
+        """번역 결과가 한국어만 포함하는지 검증하고 정리"""
+        import re
+        
+        # 중국어 문자 범위 검출
+        chinese_pattern = r'[\u4e00-\u9fff]'
+        # 일본어 문자 범위 검출 (히라가나, 가타카나, 한자)
+        japanese_pattern = r'[\u3040-\u309f\u30a0-\u30ff]'
+        
+        if re.search(chinese_pattern, text):
+            print(f"⚠️  중국어 문자 감지됨, 재번역 필요")
+            return None
+        
+        if re.search(japanese_pattern, text):
+            print(f"⚠️  일본어 문자 감지됨, 재번역 필요")
+            return None
+            
+        return text
+    
     def translate_text(self, text: str) -> Optional[str]:
         """단일 텍스트 블록 번역"""
         if not text.strip():
@@ -215,11 +234,17 @@ class OllamaTranslator:
                 
                 translation = response.get('response', '').strip()
                 if translation:
+                    # 한국어 외 언어 검증
+                    validated_translation = self._validate_korean_only(translation)
+                    if validated_translation is None:
+                        print(f"경고: 한국어 외 언어 감지, 재시도 (시도 {attempt + 1}/{self.max_retries})")
+                        continue  # 재시도
+                    
                     # 캐시에 저장
-                    self._save_to_cache(text, translation)
+                    self._save_to_cache(text, validated_translation)
                     with self.stats_lock:
                         self.stats["total_translations"] += 1
-                    return translation
+                    return validated_translation
                 else:
                     print(f"경고: 빈 번역 결과 (시도 {attempt + 1}/{self.max_retries})")
                     
