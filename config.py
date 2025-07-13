@@ -7,7 +7,7 @@
 """
 
 # 기본 Ollama 모델 설정
-DEFAULT_MODEL = "qwen3:latest"
+DEFAULT_MODEL = "phi4:latest"
 
 # 기본 번역 설정
 DEFAULT_TEMPERATURE = 0.1
