@@ -16,6 +16,15 @@ from .translator import OllamaTranslator
 from .prompts import get_genre_list, validate_genre
 from .builder import build_korean_epub
 
+# 전역 설정 import
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from config import (
+    DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_RETRIES, DEFAULT_GENRE,
+    DEFAULT_MAX_CHUNK_SIZE, DEFAULT_MIN_CHUNK_SIZE, DEFAULT_ENABLE_CACHE,
+    SUPPORTED_GENRES, DEFAULT_NUM_GPU_LAYERS, DEFAULT_TRANSLATED_DIR
+)
+
 
 def create_parser():
     """
@@ -77,17 +86,17 @@ def _add_extract_arguments(parser):
     parser.add_argument(
         '--max-chunk-size',
         type=int,
-        default=3500,
+        default=DEFAULT_MAX_CHUNK_SIZE,
         metavar='N',
-        help='최대 청크 크기 (문자 수, 기본값: 3500)'
+        help=f'최대 청크 크기 (문자 수, 기본값: {DEFAULT_MAX_CHUNK_SIZE})'
     )
     
     parser.add_argument(
         '--min-chunk-size',
         type=int,
-        default=1500,
+        default=DEFAULT_MIN_CHUNK_SIZE,
         metavar='N',
-        help='최소 청크 크기 (문자 수, 기본값: 1500)'
+        help=f'최소 청크 크기 (문자 수, 기본값: {DEFAULT_MIN_CHUNK_SIZE})'
     )
     
     parser.add_argument(
@@ -122,36 +131,36 @@ def _add_translate_arguments(parser):
     parser.add_argument(
         'output_dir',
         nargs='?',
-        default='translated',
-        help='번역 결과를 저장할 디렉토리 (기본값: translated)'
+        default=DEFAULT_TRANSLATED_DIR,
+        help=f'번역 결과를 저장할 디렉토리 (기본값: {DEFAULT_TRANSLATED_DIR})'
     )
     
     parser.add_argument(
         '--model',
-        default='llama3-ko-simple:8b',
-        help='사용할 Ollama 모델명 (기본값: llama3-ko-simple:8b)'
+        default=DEFAULT_MODEL,
+        help=f'사용할 Ollama 모델명 (기본값: {DEFAULT_MODEL})'
     )
     
     
     parser.add_argument(
         '--temperature',
         type=float,
-        default=0.1,
-        help='번역 온도 (기본값: 0.1)'
+        default=DEFAULT_TEMPERATURE,
+        help=f'번역 온도 (기본값: {DEFAULT_TEMPERATURE})'
     )
     
     parser.add_argument(
         '--max-retries',
         type=int,
-        default=3,
-        help='번역 실패시 재시도 횟수 (기본값: 3)'
+        default=DEFAULT_MAX_RETRIES,
+        help=f'번역 실패시 재시도 횟수 (기본값: {DEFAULT_MAX_RETRIES})'
     )
     
     parser.add_argument(
         '--genre',
         choices=get_genre_list(),
-        default=None,
-        help='소설 장르 (기본값: 자동 감지, 선택: fantasy, sci-fi, romance, mystery, horror, general)'
+        default=DEFAULT_GENRE,
+        help=f'소설 장르 (기본값: {DEFAULT_GENRE or "자동 감지"}, 선택: {", ".join(SUPPORTED_GENRES)})'
     )
     
     parser.add_argument(
@@ -222,29 +231,29 @@ def _add_fix_arguments(parser):
     
     parser.add_argument(
         '--model',
-        default='llama3-ko-simple:8b',
-        help='사용할 Ollama 모델명 (기본값: llama3-ko-simple:8b)'
+        default=DEFAULT_MODEL,
+        help=f'사용할 Ollama 모델명 (기본값: {DEFAULT_MODEL})'
     )
     
     parser.add_argument(
         '--temperature',
         type=float,
-        default=0.1,
-        help='번역 온도 (기본값: 0.1)'
+        default=DEFAULT_TEMPERATURE,
+        help=f'번역 온도 (기본값: {DEFAULT_TEMPERATURE})'
     )
     
     parser.add_argument(
         '--max-retries',
         type=int,
-        default=3,
-        help='번역 실패시 재시도 횟수 (기본값: 3)'
+        default=DEFAULT_MAX_RETRIES,
+        help=f'번역 실패시 재시도 횟수 (기본값: {DEFAULT_MAX_RETRIES})'
     )
     
     parser.add_argument(
         '--genre',
         choices=get_genre_list(),
-        default=None,
-        help='소설 장르 (기본값: 자동 감지, 선택: fantasy, sci-fi, romance, mystery, horror, general)'
+        default=DEFAULT_GENRE,
+        help=f'소설 장르 (기본값: {DEFAULT_GENRE or "자동 감지"}, 선택: {", ".join(SUPPORTED_GENRES)})'
     )
     
     parser.add_argument(

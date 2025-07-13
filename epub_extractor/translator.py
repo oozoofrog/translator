@@ -13,16 +13,25 @@ from functools import lru_cache
 
 from .prompts import get_translation_prompt
 
+# 전역 설정 import
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from config import (
+    DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_RETRIES, DEFAULT_GENRE,
+    DEFAULT_ENABLE_CACHE, DEFAULT_NUM_GPU_LAYERS,
+    PROGRESS_BAR_ASCII, PROGRESS_BAR_NCOLS
+)
+
 class OllamaTranslator:
     """Ollama Python 라이브러리를 사용한 영어→한국어 번역기"""
     
     def __init__(self, 
-                 model_name="llama3-ko-simple:8b",
-                 temperature=0.1,
-                 max_retries=3,
-                 genre=None,  # None이면 자동 감지
-                 enable_cache=True,
-                 num_gpu_layers=None):
+                 model_name=DEFAULT_MODEL,
+                 temperature=DEFAULT_TEMPERATURE,
+                 max_retries=DEFAULT_MAX_RETRIES,
+                 genre=DEFAULT_GENRE,  # None이면 자동 감지
+                 enable_cache=DEFAULT_ENABLE_CACHE,
+                 num_gpu_layers=DEFAULT_NUM_GPU_LAYERS):
         """
         Args:
             model_name: 사용할 Ollama 모델명

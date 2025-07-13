@@ -8,6 +8,15 @@ This is a complete EPUB translation system that converts English novels to Korea
 
 **Requirements**: Python 3.6+ (core extractor uses only standard library, making it highly portable)
 
+## Configuration
+
+All default settings are centrally managed in `config.py`:
+- Default model: `deepseek-r1:8b` (configurable)
+- Default temperature: 0.1
+- Default chunk sizes: 1500-3500 characters
+- Default genre: fantasy (with auto-detection)
+- All scripts automatically use these shared settings
+
 ## Development Commands
 
 ### Environment Setup
@@ -36,7 +45,7 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 
 # 2. Translate chunks (outputs to translated/ by default)
 ./translate.sh "novel/"                             # Basic translation
-./translate.sh "novel/" --model qwen2.5:7b          # Different model  
+./translate.sh "novel/" --model deepseek-r1:8b      # Different model  
 ./translate.sh "novel/" --resume                    # Resume interrupted translation
 
 # 3. Build Korean EPUB

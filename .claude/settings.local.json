@@ -32,7 +32,14 @@
       "Bash(wget:*)",
       "Bash(ollama create:*)",
       "Bash(ollama run:*)",
-      "Bash(system_profiler:*)"
+      "Bash(system_profiler:*)",
+      "Bash(pkill:*)",
+      "Bash(rsync:*)",
+      "Bash(export OLLAMA_MODELS=\"/Volumes/eyedisk/ollama-models\")",
+      "Bash(echo:*)",
+      "Bash(env)",
+      "Bash(OLLAMA_MODELS=\"/Volumes/eyedisk/ollama-models\" ollama list)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

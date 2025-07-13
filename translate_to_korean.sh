@@ -20,7 +20,7 @@ show_help() {
     echo "  $0 \"novel.epub\" --output \"번역본.epub\""
     echo ""
     echo "옵션 설명:"
-    echo "  --model MODEL         사용할 Ollama 모델 (기본값: qwen2.5:14b)"
+    echo "  --model MODEL         사용할 Ollama 모델 (기본값: $MODEL)"
     echo "  --genre GENRE         소설 장르 (fantasy/sci-fi/romance/mystery/general, 기본값: fantasy)"
     echo "  --max-chunk-size N    최대 청크 크기 (기본값: 3500)"
     echo "  --min-chunk-size N    최소 청크 크기 (기본값: 1500)"
@@ -44,12 +44,23 @@ show_help() {
     echo "  - 충분한 디스크 공간 (원본 크기의 3-5배)"
 }
 
-# 기본값 설정
-MODEL="llama3-ko-simple:8b"
-GENRE="fantasy"
-MAX_CHUNK_SIZE=3500
-MIN_CHUNK_SIZE=1500
-TEMPERATURE=0.1
+# Python 설정에서 기본값 읽기
+if [ -f "$SCRIPT_DIR/config.py" ]; then
+    MODEL=$(python3 -c "import sys; sys.path.append('$SCRIPT_DIR'); from config import DEFAULT_MODEL; print(DEFAULT_MODEL)" 2>/dev/null || echo "deepseek-r1:8b")
+    GENRE=$(python3 -c "import sys; sys.path.append('$SCRIPT_DIR'); from config import DEFAULT_GENRE; print(DEFAULT_GENRE)" 2>/dev/null || echo "fantasy")
+    MAX_CHUNK_SIZE=$(python3 -c "import sys; sys.path.append('$SCRIPT_DIR'); from config import DEFAULT_MAX_CHUNK_SIZE; print(DEFAULT_MAX_CHUNK_SIZE)" 2>/dev/null || echo "3500")
+    MIN_CHUNK_SIZE=$(python3 -c "import sys; sys.path.append('$SCRIPT_DIR'); from config import DEFAULT_MIN_CHUNK_SIZE; print(DEFAULT_MIN_CHUNK_SIZE)" 2>/dev/null || echo "1500")
+    TEMPERATURE=$(python3 -c "import sys; sys.path.append('$SCRIPT_DIR'); from config import DEFAULT_TEMPERATURE; print(DEFAULT_TEMPERATURE)" 2>/dev/null || echo "0.1")
+else
+    # 기본값 설정 (config.py가 없는 경우)
+    MODEL="deepseek-r1:8b"
+    GENRE="fantasy"
+    MAX_CHUNK_SIZE=3500
+    MIN_CHUNK_SIZE=1500
+    TEMPERATURE=0.1
+fi
+
+# 기타 설정
 NO_CACHE=false
 NUM_GPU_LAYERS=""
 KEEP_TEMP=false
