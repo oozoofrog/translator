@@ -22,7 +22,7 @@ class OllamaTranslator:
                  model_name="qwen2.5:14b",
                  temperature=0.1,
                  max_retries=3,
-                 genre="fantasy",
+                 genre=None,  # None이면 자동 감지
                  max_workers=4,
                  batch_size=5,
                  enable_cache=True,
@@ -50,8 +50,12 @@ class OllamaTranslator:
         # Ollama 클라이언트 초기화
         self.client = ollama.Client()
         
+        # 장르 설정 (자동 감지 지원)
+        self.genre = genre if genre is not None else "fantasy"  # 기본값
+        self.auto_detect_genre = genre is None  # 자동 감지 여부
+        
         # 장르별 번역 프롬프트 설정
-        self.translation_prompt = get_translation_prompt(genre)
+        self.translation_prompt = get_translation_prompt(self.genre)
         
         # 캐시 초기화
         if enable_cache:
@@ -74,6 +78,45 @@ class OllamaTranslator:
             return True
         except Exception:
             return False
+    
+    def detect_genre_from_text(self, text_sample: str) -> str:
+        """텍스트 샘플을 분석하여 자동으로 장르를 감지합니다"""
+        try:
+            # 장르 감지용 프롬프트
+            genre_prompt = f"""다음 텍스트를 분석하여 소설의 장르를 판단해주세요.
+가능한 장르: fantasy, sci-fi, romance, mystery, horror, general
+
+텍스트:
+{text_sample[:1000]}
+
+위 텍스트의 장르를 하나만 선택하여 답해주세요 (단어만): """
+
+            response = self.client.chat(
+                model=self.model_name,
+                messages=[{"role": "user", "content": genre_prompt}],
+                options={
+                    "temperature": 0.3,
+                    "top_p": 0.8,
+                    "num_gpu_layers": self.num_gpu_layers
+                }
+            )
+            
+            detected_genre = response['message']['content'].strip().lower()
+            
+            # 유효한 장르인지 확인
+            valid_genres = ["fantasy", "sci-fi", "romance", "mystery", "horror", "general"]
+            if detected_genre in valid_genres:
+                return detected_genre
+            else:
+                # 부분 매칭 시도
+                for genre in valid_genres:
+                    if genre in detected_genre:
+                        return genre
+                return "general"  # 기본값
+                
+        except Exception as e:
+            print(f"⚠️  장르 자동 감지 실패: {e}")
+            return "general"  # 실패시 기본값
     
     def check_model_available(self) -> bool:
         """지정된 모델 사용 가능 여부 확인"""
@@ -302,6 +345,33 @@ class OllamaTranslator:
             "max_workers": self.max_workers if use_parallel else 1
         }
         
+        # 자동 장르 감지 (필요한 경우)
+        if self.auto_detect_genre and len(chunk_index["chunks"]) > 0:
+            print("🔍 장르 자동 감지 중...")
+            
+            # 첫 번째 청크를 사용하여 장르 감지
+            first_chunk_file = chunk_index["chunks"][0]["file"]
+            first_chunk_path = chunks_dir / first_chunk_file
+            
+            try:
+                with open(first_chunk_path, 'r', encoding='utf-8') as f:
+                    sample_text = f.read()
+                
+                detected_genre = self.detect_genre_from_text(sample_text)
+                
+                if detected_genre != self.genre:
+                    print(f"📚 감지된 장르: {detected_genre} (기본값 {self.genre}에서 변경)")
+                    self.genre = detected_genre
+                    # 프롬프트 업데이트
+                    from .prompts import get_translation_prompt
+                    self.translation_prompt = get_translation_prompt(self.genre)
+                else:
+                    print(f"📚 장르: {self.genre} (자동 감지로 확인됨)")
+            except Exception as e:
+                print(f"⚠️  장르 감지 실패, 기본값 사용: {self.genre}")
+        else:
+            print(f"📚 장르: {self.genre} (사용자 지정)")
+
         print(f"📚 번역 시작: {stats['total_chunks']}개 청크")
         print(f"🤖 모델: {self.model_name}")
         print(f"⚡ 병렬 처리: {'활성화' if use_parallel else '비활성화'} (워커: {stats['max_workers']})")

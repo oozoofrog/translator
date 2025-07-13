@@ -145,8 +145,8 @@ def _add_translate_arguments(parser):
     parser.add_argument(
         '--genre',
         choices=get_genre_list(),
-        default='fantasy',
-        help='소설 장르 (기본값: fantasy)'
+        default=None,
+        help='소설 장르 (기본값: 자동 감지, 선택: fantasy, sci-fi, romance, mystery, horror, general)'
     )
     
     parser.add_argument(
