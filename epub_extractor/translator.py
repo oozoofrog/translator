@@ -178,20 +178,9 @@ class OllamaTranslator:
         cache_key = self._get_cache_key(text)
         self.translation_cache[cache_key] = translation
     
-    def _validate_korean_only(self, text: str) -> str:
-        """번역 결과가 한국어만 포함하는지 검증하고 정리"""
+    def _clean_translation(self, text: str) -> str:
+        """번역 결과 기본 정리"""
         import re
-        
-        # 중국어 문자 범위 검출
-        chinese_pattern = r'[\u4e00-\u9fff]'
-        # 일본어 문자 범위 검출 (히라가나, 가타카나, 한자)
-        japanese_pattern = r'[\u3040-\u309f\u30a0-\u30ff]'
-        # 특수 문자 패턴 검출 (&O;, &C; 등)
-        special_entity_pattern = r'&[A-Z]+;'
-        # HTML 엔티티 검출
-        html_entity_pattern = r'&[a-zA-Z0-9#]+;'
-        # 이상한 특수문자 조합 검출
-        weird_chars_pattern = r'[^\uac00-\ud7af\u1100-\u11ff\u3130-\u318f\ua960-\ua97f\ud7b0-\ud7ff\s\w\d.,!?""''()\[\]{}:;~…—–\'\"''""\n\r\t-]'
         
         # 텍스트 정리
         cleaned_text = text.strip()
@@ -204,32 +193,6 @@ class OllamaTranslator:
         
         # 다중 공백을 단일 공백으로 정리
         cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
-        
-        # 특수 엔티티 검출 및 제거
-        if re.search(special_entity_pattern, cleaned_text):
-            print(f"⚠️  특수 엔티티 문자 감지됨 (&O;, &C; 등), 재번역 필요")
-            return None
-            
-        # HTML 엔티티 검출
-        if re.search(html_entity_pattern, cleaned_text):
-            print(f"⚠️  HTML 엔티티 감지됨, 재번역 필요")
-            return None
-        
-        # 중국어 문자 검출
-        if re.search(chinese_pattern, cleaned_text):
-            print(f"⚠️  중국어 문자 감지됨, 재번역 필요")
-            return None
-        
-        # 일본어 문자 검출
-        if re.search(japanese_pattern, cleaned_text):
-            print(f"⚠️  일본어 문자 감지됨, 재번역 필요")
-            return None
-        
-        # 기타 이상한 문자들 검출
-        weird_matches = re.findall(weird_chars_pattern, cleaned_text)
-        if weird_matches:
-            print(f"⚠️  비정상 문자 감지됨: {set(weird_matches)}, 재번역 필요")
-            return None
             
         return cleaned_text
     
@@ -350,17 +313,8 @@ class OllamaTranslator:
                     # 번역을 받았으므로 저장 (검증 전에도)
                     last_translation = translation
                     
-                    # 한국어 외 언어 검증
-                    validated_translation = self._validate_korean_only(translation)
-                    if validated_translation is None:
-                        print(f"⚠️  한국어 외 언어 감지, 다른 옵션으로 재시도")
-                        # 2번 실패했으면 실패한 번역이라도 사용
-                        if attempt >= 1:  # 2번째 시도부터 (0, 1번째면 2번 실패)
-                            print(f"⚠️  2번 실패 후이므로 문제가 있는 번역이라도 사용: {translation[:100]}...")
-                            # 캐시에는 저장하지 않음 (문제가 있는 번역이므로)
-                            self.stats["total_translations"] += 1
-                            return translation
-                        continue  # 다른 옵션으로 재시도
+                    # 기본적인 후처리 적용
+                    validated_translation = self._clean_translation(translation)
                     
                     # 컨텍스트 일관성 적용
                     if self.context_manager:
@@ -373,6 +327,7 @@ class OllamaTranslator:
                     return validated_translation
                 else:
                     print(f"경고: 빈 번역 결과 (시도 {attempt + 1}/{max_attempts})")
+                    print(f"    원문 (처음 100자): {text[:100]}...")
                     
             except ollama.ResponseError as e:
                 print(f"Ollama 응답 오류: {e} (시도 {attempt + 1}/{self.max_retries})")
@@ -388,6 +343,7 @@ class OllamaTranslator:
                     break
             except Exception as e:
                 print(f"번역 오류: {e} (시도 {attempt + 1}/{self.max_retries})")
+                print(f"    원문 (처음 100자): {text[:100]}...")
             
             if attempt < self.max_retries - 1:
                 time.sleep(2 ** attempt)  # 지수 백오프
