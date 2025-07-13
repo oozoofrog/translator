@@ -213,12 +213,13 @@ class OllamaTranslator:
         
         for attempt in range(self.max_retries):
             try:
-                # 모델 옵션 설정
+                # 모델 옵션 설정 (한국어 순수성을 위해 조정)
                 options = {
                     'temperature': self.temperature,
-                    'top_p': 0.9,
-                    'top_k': 40,
-                    'repeat_penalty': 1.1
+                    'top_p': 0.8,  # 더 안정적인 출력
+                    'top_k': 30,   # 더 제한적인 선택
+                    'repeat_penalty': 1.2,  # 반복 방지 강화
+                    'seed': 42     # 재현 가능한 결과
                 }
                 
                 # GPU 레이어 설정이 있으면 추가
