@@ -37,7 +37,7 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 # 2. Translate chunks (outputs to translated/ by default)
 ./translate.sh "novel/"                             # Basic translation
 ./translate.sh "novel/" --max-workers 8             # Fast parallel translation
-./translate.sh "novel/" --model llama3:8b           # Different model
+./translate.sh "novel/" --model qwen2.5:7b           # Different model
 ./translate.sh "novel/" --resume                    # Resume interrupted translation
 
 # 3. Build Korean EPUB
@@ -59,7 +59,7 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 # Ollama management
 ollama serve                       # Start Ollama server
 ollama list                        # List installed models
-ollama pull llama3.1:8b           # Download translation model
+ollama pull qwen2.5:14b           # Download translation model
 ```
 
 ### Using the Modular API
@@ -73,7 +73,7 @@ extractor.extract("extracted_dir")
 
 # 2. Translate chunks
 translator = OllamaTranslator(
-    model_name="llama3.1:8b", 
+    model_name="qwen2.5:14b", 
     genre="fantasy",
     max_workers=4,          # Parallel processing
     batch_size=5,           # Batch size

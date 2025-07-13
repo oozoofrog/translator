@@ -123,8 +123,8 @@ def _add_translate_arguments(parser):
     
     parser.add_argument(
         '--model',
-        default='llama3.1:8b',
-        help='사용할 Ollama 모델명 (기본값: llama3.1:8b)'
+        default='qwen2.5:14b',
+        help='사용할 Ollama 모델명 (기본값: qwen2.5:14b)'
     )
     
     

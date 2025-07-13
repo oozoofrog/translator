@@ -19,7 +19,7 @@ class OllamaTranslator:
     """Ollama Python 라이브러리를 사용한 영어→한국어 번역기"""
     
     def __init__(self, 
-                 model_name="llama3.1:8b",
+                 model_name="qwen2.5:14b",
                  temperature=0.1,
                  max_retries=3,
                  genre="fantasy",

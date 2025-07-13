@@ -14,13 +14,13 @@ show_help() {
     echo "  $0 \"영문소설.epub\""
     echo ""
     echo "고급 옵션:"
-    echo "  $0 \"novel.epub\" --model llama3.1:8b"
+    echo "  $0 \"novel.epub\" --model qwen2.5:14b"
     echo "  $0 \"novel.epub\" --genre sci-fi"
     echo "  $0 \"novel.epub\" --max-chunk-size 2000"
     echo "  $0 \"novel.epub\" --output \"번역본.epub\""
     echo ""
     echo "옵션 설명:"
-    echo "  --model MODEL         사용할 Ollama 모델 (기본값: llama3.1:8b)"
+    echo "  --model MODEL         사용할 Ollama 모델 (기본값: qwen2.5:14b)"
     echo "  --genre GENRE         소설 장르 (fantasy/sci-fi/romance/mystery/general, 기본값: fantasy)"
     echo "  --max-chunk-size N    최대 청크 크기 (기본값: 3500)"
     echo "  --min-chunk-size N    최소 청크 크기 (기본값: 1500)"
@@ -48,7 +48,7 @@ show_help() {
 }
 
 # 기본값 설정
-MODEL="llama3.1:8b"
+MODEL="qwen2.5:14b"
 GENRE="fantasy"
 MAX_CHUNK_SIZE=3500
 MIN_CHUNK_SIZE=1500
