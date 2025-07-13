@@ -15,7 +15,7 @@ def test_translation():
     """번역 테스트 실행"""
     
     # 테스트 설정
-    model_name = "phi4:latest"
+    model_name = "exaone3.5:7.8b"
     genre = "fantasy"
     # temperature 0.1로 고정
     temperatures = [0.1]

@@ -192,6 +192,15 @@ class OllamaTranslator:
         # 텍스트 정리
         cleaned_text = text.strip()
         
+        # _TAB_ 제거 (모델이 생성한 탭 표시)
+        cleaned_text = cleaned_text.replace('_TAB_', ' ')
+        
+        # <think> 태그 제거 (reasoning 모델의 사고 과정)
+        cleaned_text = re.sub(r'<think>.*?</think>', '', cleaned_text, flags=re.DOTALL)
+        
+        # 다중 공백을 단일 공백으로 정리
+        cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+        
         # 특수 엔티티 검출 및 제거
         if re.search(special_entity_pattern, cleaned_text):
             print(f"⚠️  특수 엔티티 문자 감지됨 (&O;, &C; 등), 재번역 필요")

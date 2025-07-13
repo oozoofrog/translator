@@ -7,7 +7,7 @@
 """
 
 # 기본 Ollama 모델 설정
-DEFAULT_MODEL = "phi4:latest"
+DEFAULT_MODEL = "exaone3.5:7.8b"
 
 # 기본 번역 설정
 DEFAULT_TEMPERATURE = 0.1
