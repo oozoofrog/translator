@@ -25,9 +25,6 @@ show_help() {
     echo "  --max-chunk-size N    최대 청크 크기 (기본값: 3500)"
     echo "  --min-chunk-size N    최소 청크 크기 (기본값: 1500)"
     echo "  --temperature N       번역 온도 0.0-2.0 (기본값: 0.1)"
-    echo "  --max-workers N       병렬 처리 워커 수 (기본값: 4)"
-    echo "  --batch-size N        배치 처리 크기 (기본값: 5)"
-    echo "  --no-parallel         병렬 처리 비활성화"
     echo "  --no-cache            번역 캐싱 비활성화"
     echo "  --num-gpu-layers N    GPU에 로드할 레이어 수"
     echo "  --output FILE         출력 EPUB 파일명 (기본값: 원본파일명-ko.epub)"
@@ -53,9 +50,6 @@ GENRE="fantasy"
 MAX_CHUNK_SIZE=3500
 MIN_CHUNK_SIZE=1500
 TEMPERATURE=0.1
-MAX_WORKERS=4
-BATCH_SIZE=5
-NO_PARALLEL=false
 NO_CACHE=false
 NUM_GPU_LAYERS=""
 KEEP_TEMP=false
@@ -106,18 +100,6 @@ while [[ $# -gt 0 ]]; do
         --output)
             OUTPUT_FILE="$2"
             shift 2
-            ;;
-        --max-workers)
-            MAX_WORKERS="$2"
-            shift 2
-            ;;
-        --batch-size)
-            BATCH_SIZE="$2"
-            shift 2
-            ;;
-        --no-parallel)
-            NO_PARALLEL=true
-            shift
             ;;
         --no-cache)
             NO_CACHE=true
@@ -254,13 +236,7 @@ TRANSLATE_ARGS=(
     "--model" "$MODEL"
     "--genre" "$GENRE"
     "--temperature" "$TEMPERATURE"
-    "--max-workers" "$MAX_WORKERS"
-    "--batch-size" "$BATCH_SIZE"
 )
-
-if [ "$NO_PARALLEL" = true ]; then
-    TRANSLATE_ARGS+=("--no-parallel")
-fi
 
 if [ "$NO_CACHE" = true ]; then
     TRANSLATE_ARGS+=("--no-cache")

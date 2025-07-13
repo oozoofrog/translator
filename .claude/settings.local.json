@@ -31,7 +31,8 @@
       "WebFetch(domain:huggingface.co)",
       "Bash(wget:*)",
       "Bash(ollama create:*)",
-      "Bash(ollama run:*)"
+      "Bash(ollama run:*)",
+      "Bash(system_profiler:*)"
     ],
     "deny": []
   }

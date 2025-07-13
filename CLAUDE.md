@@ -36,8 +36,7 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 
 # 2. Translate chunks (outputs to translated/ by default)
 ./translate.sh "novel/"                             # Basic translation
-./translate.sh "novel/" --max-workers 8             # Fast parallel translation
-./translate.sh "novel/" --model qwen2.5:7b           # Different model
+./translate.sh "novel/" --model qwen2.5:7b          # Different model  
 ./translate.sh "novel/" --resume                    # Resume interrupted translation
 
 # 3. Build Korean EPUB
@@ -51,10 +50,10 @@ python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 3500
 ./translate.sh "extracted_dir/" "custom_output/"    # Custom output directory
 ```
 
-#### Performance Optimization
+#### System Optimization
 ```bash
-# High-speed translation with all optimizations
-./translate.sh "dir/" --max-workers 8 --batch-size 10 --num-gpu-layers 35
+# Translation with GPU optimization
+./translate.sh "dir/" --num-gpu-layers 35
 
 # Ollama management
 ollama serve                       # Start Ollama server
@@ -73,14 +72,12 @@ extractor.extract("extracted_dir")
 
 # 2. Translate chunks
 translator = OllamaTranslator(
-    model_name="llama3-ko:8b", 
+    model_name="llama3-ko-simple:8b", 
     genre="fantasy",
-    max_workers=4,          # Parallel processing
-    batch_size=5,           # Batch size
     enable_cache=True,      # Translation caching
     num_gpu_layers=None     # Auto GPU layers
 )
-translator.translate_chunks("extracted_dir", "translated_dir", use_parallel=True)
+translator.translate_chunks("extracted_dir", "translated_dir")
 
 # 3. Build Korean EPUB
 korean_epub = build_korean_epub("novel.epub", "translated_dir", "novel-ko.epub")
@@ -182,12 +179,11 @@ novel-ko.epub              # Final Korean EPUB output
 - Larger chunks: Better context preservation, slower processing
 - Smart splitting: Preserves natural text boundaries (paragraphs > sentences > words)
 
-### Performance Optimizations (NEW)
-- **Parallel Processing**: 2-4x speed improvement with ThreadPoolExecutor
-- **Batch Processing**: Configurable batch sizes (1-20 chunks)
+### System Optimizations
+- **Sequential Processing**: Stable, memory-efficient processing with reduced resource usage
 - **Translation Caching**: MD5-based caching prevents duplicate translations
 - **GPU Layer Optimization**: Automatic or manual GPU memory management
-- **Intelligent Progress Tracking**: Thread-safe progress updates with statistics
+- **Intelligent Progress Tracking**: Real-time progress updates with comprehensive statistics
 
 ### Translation Quality Controls
 - Low temperature (0.1) for consistency

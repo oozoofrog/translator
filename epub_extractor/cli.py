@@ -160,27 +160,7 @@ def _add_translate_arguments(parser):
         help='이전 번역 작업 이어서 진행'
     )
     
-    parser.add_argument(
-        '--max-workers',
-        type=int,
-        default=4,
-        metavar='N',
-        help='병렬 처리 워커 수 (기본값: 4)'
-    )
     
-    parser.add_argument(
-        '--batch-size',
-        type=int,
-        default=5,
-        metavar='N',
-        help='배치 처리 크기 (기본값: 5)'
-    )
-    
-    parser.add_argument(
-        '--no-parallel',
-        action='store_true',
-        help='병렬 처리 비활성화'
-    )
     
     parser.add_argument(
         '--no-cache',
@@ -429,8 +409,7 @@ def print_translate_banner(args):
     print(f"🤖 모델: {args.model}")
     print(f"📚 장르: {args.genre}")
     print(f"🌡️ 온도: {args.temperature}")
-    print(f"⚡ 병렬 처리: {'활성화' if not args.no_parallel else '비활성화'} (워커: {args.max_workers})")
-    print(f"📦 배치 크기: {args.batch_size}")
+    print(f"⚡ 처리 방식: 순차 처리")
     print(f"💾 캐싱: {'활성화' if not args.no_cache else '비활성화'}")
     if args.num_gpu_layers:
         print(f"🎮 GPU 레이어: {args.num_gpu_layers}")
@@ -515,8 +494,6 @@ def run_translate_command(args):
         temperature=args.temperature,
         max_retries=args.max_retries,
         genre=args.genre,
-        max_workers=args.max_workers,
-        batch_size=args.batch_size,
         enable_cache=not args.no_cache,
         num_gpu_layers=args.num_gpu_layers
     )
@@ -546,8 +523,7 @@ def run_translate_command(args):
     # 번역 수행
     stats = translator.translate_chunks(
         args.input_dir, 
-        args.output_dir,
-        use_parallel=not args.no_parallel
+        args.output_dir
     )
     
     # 완료 메시지
