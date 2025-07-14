@@ -15,6 +15,7 @@ from .utils import validate_chunk_sizes
 from .translator import OllamaTranslator
 from .prompts import get_genre_list, validate_genre
 from .builder import build_korean_epub
+from .rebuilder import rebuild_epub_from_extracted
 
 # 전역 설정 import
 import sys
@@ -68,6 +69,10 @@ def create_parser():
     build_parser = subparsers.add_parser('build', help='번역된 텍스트로 한글 EPUB 생성')
     build_parser = _add_build_arguments(build_parser)
     
+    # rebuild 명령어
+    rebuild_parser = subparsers.add_parser('rebuild', help='추출된 HTML 파일로 EPUB 재구성')
+    rebuild_parser = _add_rebuild_arguments(rebuild_parser)
+    
     # fix 명령어
     fix_parser = subparsers.add_parser('fix', help='번역된 파일의 문제점 감지 및 재번역')
     fix_parser = _add_fix_arguments(fix_parser)
@@ -115,6 +120,12 @@ def _add_extract_arguments(parser):
         '--verbose', '-v',
         action='store_true',
         help='상세한 출력 표시'
+    )
+    
+    parser.add_argument(
+        '--extract-only',
+        action='store_true',
+        help='청크 분할 없이 원본 HTML 파일만 추출'
     )
     
     return parser
@@ -221,6 +232,34 @@ def _add_build_arguments(parser):
     return parser
 
 
+def _add_rebuild_arguments(parser):
+    """재구성 명령어 인수 추가"""
+    
+    parser.add_argument(
+        'original_epub',
+        help='원본 EPUB 파일 경로'
+    )
+    
+    parser.add_argument(
+        'extracted_dir',
+        help='추출된 HTML 파일이 있는 디렉토리'
+    )
+    
+    parser.add_argument(
+        '--output', '-o',
+        metavar='FILE',
+        help='출력 EPUB 파일 경로 (기본값: 원본파일명-rebuilt.epub)'
+    )
+    
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='상세한 출력 표시'
+    )
+    
+    return parser
+
+
 def _add_fix_arguments(parser):
     """재번역 명령어 인수 추가"""
     
@@ -289,7 +328,7 @@ def validate_extract_arguments(args):
         sys.exit(1)
     
     # 청크 크기 검증 (청크 생성하는 경우만)
-    if not args.no_chunks:
+    if not args.no_chunks and not args.extract_only:
         try:
             validate_chunk_sizes(args.max_chunk_size, args.min_chunk_size)
         except ValueError as e:
@@ -382,6 +421,50 @@ def validate_build_arguments(args):
     return True
 
 
+def validate_rebuild_arguments(args):
+    """
+    재구성 명령줄 인수 검증
+    
+    Args:
+        args: 파싱된 인수 객체
+        
+    Returns:
+        bool: 유효한 인수인 경우 True
+        
+    Raises:
+        SystemExit: 잘못된 인수인 경우
+    """
+    # 원본 EPUB 파일 존재 확인
+    if not os.path.exists(args.original_epub):
+        print(f"❌ 원본 EPUB 파일을 찾을 수 없습니다: {args.original_epub}")
+        sys.exit(1)
+    
+    # EPUB 파일 확장자 확인
+    if not args.original_epub.lower().endswith('.epub'):
+        print("❌ 원본 파일이 EPUB 파일이 아닙니다.")
+        sys.exit(1)
+    
+    # 추출 디렉토리 존재 확인
+    if not os.path.exists(args.extracted_dir):
+        print(f"❌ 추출 디렉토리를 찾을 수 없습니다: {args.extracted_dir}")
+        sys.exit(1)
+    
+    # chapters 디렉토리 확인
+    chapters_dir = os.path.join(args.extracted_dir, 'chapters')
+    if not os.path.exists(chapters_dir):
+        print(f"❌ chapters 디렉토리를 찾을 수 없습니다: {chapters_dir}")
+        print("먼저 EPUB을 --extract-only 옵션으로 추출해주세요.")
+        sys.exit(1)
+    
+    # info.json 파일 확인
+    info_file = os.path.join(args.extracted_dir, 'info.json')
+    if not os.path.exists(info_file):
+        print(f"❌ info.json 파일을 찾을 수 없습니다: {info_file}")
+        sys.exit(1)
+    
+    return True
+
+
 def print_extract_banner(args):
     """
     추출 시작 배너 출력
@@ -393,7 +476,9 @@ def print_extract_banner(args):
     print("=" * 40)
     print(f"📖 파일: {args.epub_file}")
     
-    if not args.no_chunks:
+    if args.extract_only:
+        print("📋 모드: 원본 HTML 추출 (청크 분할 없음)")
+    elif not args.no_chunks:
         print(f"📐 청크 크기: {args.min_chunk_size}-{args.max_chunk_size} 문자")
     else:
         print("📋 모드: 챕터 파일만 생성")
@@ -446,6 +531,25 @@ def print_build_banner(args):
     print()
 
 
+def print_rebuild_banner(args):
+    """
+    재구성 시작 배너 출력
+    
+    Args:
+        args: 파싱된 인수 객체
+    """
+    print("📚 EPUB 재구성기 v1.0.0")
+    print("=" * 40)
+    print(f"📖 원본: {args.original_epub}")
+    print(f"📁 추출: {args.extracted_dir}")
+    if args.output:
+        print(f"📄 출력: {args.output}")
+    else:
+        base_name = os.path.splitext(os.path.basename(args.original_epub))[0]
+        print(f"📄 출력: {base_name}-rebuilt.epub")
+    print()
+
+
 def run_extract_command(args):
     """
     추출 명령어 실행
@@ -461,14 +565,24 @@ def run_extract_command(args):
         print_extract_banner(args)
     
     # 추출기 생성 및 실행
-    create_chunks = not args.no_chunks
-    
-    extractor = EPUBExtractor(
-        args.epub_file,
-        max_chunk_size=args.max_chunk_size,
-        min_chunk_size=args.min_chunk_size,
-        create_chunks=create_chunks
-    )
+    if args.extract_only:
+        # extract_only 모드: 청크 생성 없이 원본 HTML만 추출
+        extractor = EPUBExtractor(
+            args.epub_file,
+            max_chunk_size=args.max_chunk_size,
+            min_chunk_size=args.min_chunk_size,
+            create_chunks=False,
+            extract_raw_html=True
+        )
+    else:
+        # 일반 모드
+        create_chunks = not args.no_chunks
+        extractor = EPUBExtractor(
+            args.epub_file,
+            max_chunk_size=args.max_chunk_size,
+            min_chunk_size=args.min_chunk_size,
+            create_chunks=create_chunks
+        )
     
     extractor.extract(args.output_dir)
     
@@ -588,6 +702,47 @@ def run_build_command(args):
         sys.exit(1)
 
 
+def run_rebuild_command(args):
+    """
+    재구성 명령어 실행
+    
+    Args:
+        args: 파싱된 인수 객체
+    """
+    # 인수 검증
+    validate_rebuild_arguments(args)
+    
+    # 시작 배너 출력
+    if args.verbose or True:  # 항상 표시
+        print_rebuild_banner(args)
+    
+    try:
+        # EPUB 재구성 수행
+        output_file = rebuild_epub_from_extracted(
+            args.original_epub, 
+            args.extracted_dir, 
+            args.output
+        )
+        
+        # 완료 메시지
+        print("\n" + "=" * 50)
+        print("📚 EPUB 재구성 완료!")
+        print(f"원본: {args.original_epub}")
+        print(f"출력: {output_file}")
+        
+        # 파일 정보 표시
+        if os.path.exists(output_file):
+            file_size = os.path.getsize(output_file) / (1024 * 1024)  # MB
+            print(f"크기: {file_size:.1f} MB")
+        
+    except Exception as e:
+        print(f"\n❌ EPUB 재구성 중 오류 발생: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
 def run_fix_command(args):
     """
     재번역 명령어 실행
@@ -671,6 +826,8 @@ def main():
             run_translate_command(args)
         elif args.command == 'build':
             run_build_command(args)
+        elif args.command == 'rebuild':
+            run_rebuild_command(args)
         elif args.command == 'fix':
             run_fix_command(args)
         else:

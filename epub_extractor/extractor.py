@@ -25,7 +25,7 @@ from .utils import (
 class EPUBExtractor:
     """EPUB 파일 추출 및 처리 클래스"""
     
-    def __init__(self, epub_path, max_chunk_size=3500, min_chunk_size=1500, create_chunks=True):
+    def __init__(self, epub_path, max_chunk_size=3500, min_chunk_size=1500, create_chunks=True, extract_raw_html=False):
         """
         EPUB 추출기 초기화
         
@@ -34,6 +34,7 @@ class EPUBExtractor:
             max_chunk_size (int): 최대 청크 크기
             min_chunk_size (int): 최소 청크 크기
             create_chunks (bool): 청크 파일 생성 여부
+            extract_raw_html (bool): 원본 HTML 파일 추출 여부
         """
         self.epub_path = epub_path
         self.zip_file = None
@@ -43,6 +44,7 @@ class EPUBExtractor:
         self.max_chunk_size = max_chunk_size
         self.min_chunk_size = min_chunk_size
         self.create_chunks = create_chunks
+        self.extract_raw_html = extract_raw_html
         self.chunker = TextChunker(max_chunk_size, min_chunk_size) if create_chunks else None
         
     def extract(self, output_dir=None):
@@ -278,18 +280,25 @@ class EPUBExtractor:
                 # EPUB 내 파일 읽기
                 content = self.zip_file.read(chapter['file_path']).decode('utf-8', errors='ignore')
                 
-                # 개선된 HTML 파싱으로 문단 구조 보존
-                text_content = extract_text_from_html(content)
-                
-                # 파일 저장
-                output_file = os.path.join(chapters_dir, f"{chapter['name']}.txt")
-                with open(output_file, 'w', encoding='utf-8') as f:
-                    f.write(text_content)
-                
-                # 챕터 객체에 텍스트 내용 저장 (청킹용)
-                chapter['content'] = text_content
-                
-                print(f"📄 {chapter['name']}.txt")
+                if self.extract_raw_html:
+                    # 원본 HTML 저장
+                    output_file = os.path.join(chapters_dir, f"{chapter['name']}.html")
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    print(f"📄 {chapter['name']}.html")
+                else:
+                    # 개선된 HTML 파싱으로 문단 구조 보존
+                    text_content = extract_text_from_html(content)
+                    
+                    # 파일 저장
+                    output_file = os.path.join(chapters_dir, f"{chapter['name']}.txt")
+                    with open(output_file, 'w', encoding='utf-8') as f:
+                        f.write(text_content)
+                    
+                    # 챕터 객체에 텍스트 내용 저장 (청킹용)
+                    chapter['content'] = text_content
+                    
+                    print(f"📄 {chapter['name']}.txt")
                 
             except Exception as e:
                 print(f"⚠️  챕터 '{chapter['name']}' 처리 중 오류: {e}")
