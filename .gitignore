@@ -59,3 +59,19 @@ epub_extractor_old.py
 .tmp/
 temp/
 *.tmp
+
+# Virtualenv
+venv/
+.venv/
+
+# Data/outputs
+outputs/
+data/raw/
+data/processed/
+
+# 환경 변수/설정
+.env
+
+# Test/coverage
+.pytest_cache/
+.coverage

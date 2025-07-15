@@ -1,3 +1,44 @@
+# 프로젝트 구조 및 개발 가이드 (2024.07)
+
+## 폴더 구조
+
+```
+config/                # 설정 파일 (config.py 등)
+data/
+  raw/                 # 원본 데이터
+  processed/           # 전처리/중간 산출물
+outputs/               # 번역 결과 등 최종 산출물
+epub_extractor/        # 핵심 파이썬 모듈
+  ...
+tests/
+  unit/                # 단위 테스트
+  resources/           # 테스트/샘플 데이터
+venv/                  # 가상환경 (gitignore)
+```
+
+## 주요 개발/테스트 명령어
+
+- `make test`      : 단위 테스트 실행
+- `make lint`      : 코드 린트 검사 (flake8)
+- `make format`    : 코드 자동 포맷팅 (black, isort)
+- `make coverage`  : 커버리지 리포트 출력
+- `make clean`     : 캐시/임시 파일 정리
+
+## 환경 변수 예시 (.env)
+```
+OLLAMA_MODEL=exaone3.5:7.8b
+DEBUG=True
+```
+
+## 개발/테스트 의존성 (requirements-dev.txt)
+- pytest, pytest-cov, black, isort, flake8 등
+
+## 기타
+- venv/, outputs/, data/raw/ 등은 gitignore로 관리
+- 자세한 워크플로우/기여 가이드는 CLAUDE.md 참고
+
+---
+
 # EPUB 파일 추출기 및 번역기 (개선된 버전)
 
 EPUB 파일의 내용을 챕터별로 분리하고 LLM 번역에 적합한 크기의 청크로 나누며, Ollama를 사용하여 영어→한국어 번역을 수행하는 Python 도구입니다.

@@ -1,0 +1,24 @@
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | __pycache__
+  | tests/resources
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ["venv", "__pycache__", "tests/resources"]
+
+[tool.pytest.ini_options]
+addopts = "--maxfail=3 --disable-warnings"
+testpaths = ["tests/unit"] 
