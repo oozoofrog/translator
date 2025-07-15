@@ -11,7 +11,6 @@ import json
 import os
 import shutil
 import tempfile
-import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
