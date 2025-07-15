@@ -409,7 +409,7 @@ def print_translate_banner(args):
     print(f"🤖 모델: {args.model}")
     print(f"📚 장르: {args.genre}")
     print(f"🌡️ 온도: {args.temperature}")
-    print(f"⚡ 처리 방식: 순차 처리")
+    print("⚡ 처리 방식: 순차 처리")
     print(f"💾 캐싱: {'활성화' if not args.no_cache else '비활성화'}")
     if args.num_gpu_layers:
         print(f"🎮 GPU 레이어: {args.num_gpu_layers}")
@@ -495,7 +495,7 @@ def run_extract_command(args):
     # 성공 메시지
     if args.verbose:
         metadata = extractor.get_metadata()
-        print(f"\n📊 추출 통계:")
+        print("\n📊 추출 통계:")
         print(f"   📚 총 챕터: {extractor.get_chapter_count()}개")
         if metadata.get("title"):
             print(f"   📖 제목: {metadata['title']}")

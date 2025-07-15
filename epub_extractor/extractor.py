@@ -296,7 +296,7 @@ class EPUBExtractor:
         chunks_dir = os.path.join(output_dir, "chunks")
         all_chunks = []
 
-        print(f"\n🔄 LLM 번역용 청크 생성 중...")
+        print("\n🔄 LLM 번역용 청크 생성 중...")
 
         for chapter in self.chapters:
             if "content" not in chapter:
@@ -326,7 +326,7 @@ class EPUBExtractor:
         self._create_chunk_index(chunks_dir, all_chunks)
 
         print(f"\n✅ 총 {len(all_chunks)}개 청크 생성 완료")
-        print(f"📋 청크 인덱스: chunks/chunk_index.json")
+        print("📋 청크 인덱스: chunks/chunk_index.json")
 
     def _create_chunk_index(self, chunks_dir, all_chunks):
         """청크 인덱스 파일 생성"""
@@ -349,12 +349,12 @@ class EPUBExtractor:
         print(f"\n✅ 추출 완료: {len(self.chapters)}개 챕터")
 
         if self.create_chunks:
-            print(f"   📁 chapters/ : 원본 챕터 파일들")
-            print(f"   📁 chunks/   : LLM 번역용 청크 파일들")
+            print("   📁 chapters/ : 원본 챕터 파일들")
+            print("   📁 chunks/   : LLM 번역용 청크 파일들")
         else:
-            print(f"   📁 chapters/ : 챕터 파일들")
+            print("   📁 chapters/ : 챕터 파일들")
 
-        print(f"   📄 info.json : 책 정보")
+        print("   📄 info.json : 책 정보")
 
     def get_chapter_count(self):
         """추출된 챕터 수 반환"""
