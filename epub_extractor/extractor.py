@@ -253,10 +253,10 @@ class EPUBExtractor:
         with open(info_path, "w", encoding="utf-8") as f:
             json.dump(info_data, f, ensure_ascii=False, indent=2)
 
-        print(f"📄 메타데이터 저장됨: info.json")
-        if self.metadata["title"]:
+        print("📄 메타데이터 저장됨: info.json")
+        if self.metadata['title']:
             print(f"   📖 제목: {self.metadata['title']}")
-        if self.metadata["author"]:
+        if self.metadata['author']:
             print(f"   ✍️  저자: {self.metadata['author']}")
 
     def _create_chapter_files(self, output_dir):

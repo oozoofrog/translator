@@ -7,11 +7,9 @@
 번역 과정에서 일관성을 유지하도록 도와주는 시스템
 """
 
-import hashlib
 import json
-import os
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List
 
 
 class TranslationContextManager:
