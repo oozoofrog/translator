@@ -51,39 +51,34 @@ GENRE_SPECIFIC_GUIDELINES = {
 - **표준 서술문 필수**: "~했다", "~였다", "~이었다", "~한다", "~이다"만 사용
 - **금지 표현 재확인**: "~어요", "~습니다", "~다네", "~지", "~구나", "~죠" 등 모든 구어체 금지
 - 던전, 드래곤 등 판타지 고유 용어의 자연스러운 번역""",
-    
     "sci-fi": """장르별 추가 지침 (SF):
 - 과학기술 용어의 정확한 번역과 일관성
 - 미래적/기술적 분위기 표현
 - SF 설정과 개념들의 명확한 전달
 - 전문 용어는 이해하기 쉽게 번역
 - 시간여행, 우주, 로봇 등 SF 개념의 정확한 전달""",
-    
     "romance": """장르별 추가 지침 (로맨스):
 - 감정 표현의 섬세함과 로맨틱한 분위기 전달
 - 내면 독백과 심리 묘사의 자연스러운 번역
 - 애정 표현의 한국적 정서 반영
 - 달콤하고 감성적인 톤 유지
 - 로맨틱한 장면의 분위기와 감정 보존""",
-    
     "mystery": """장르별 추가 지침 (추리/미스터리):
 - 긴장감과 서스펜스 분위기 유지
 - 단서와 복선의 정확한 전달
 - 추리 과정의 논리적 흐름 보존
 - 반전과 충격의 임팩트 살리기
 - 수사, 범죄 관련 용어의 정확한 번역""",
-    
     "horror": """장르별 추가 지침 (호러):
 - 공포감과 긴장감 조성하는 분위기 전달
 - 섬뜩하고 불안한 감정의 섬세한 표현
 - 호러 특유의 묘사와 분위기 보존
 - 공포 요소의 임팩트 살리기""",
-    
     "general": """장르별 추가 지침 (일반 문학):
 - 일반적인 문학 작품의 품격 유지
 - 다양한 장르 요소들의 균형있는 번역
 - 보편적인 감정과 상황의 자연스러운 표현
-- 작품의 전체적인 톤과 메시지 보존"""
+- 작품의 전체적인 톤과 메시지 보존""",
 }
 
 # 시스템 메시지 템플릿
@@ -141,77 +136,74 @@ QUALITY_CHECK_REMINDERS = {
     "no_addition": "원문에 없는 내용을 추가하지 않았는지 확인하세요.",
     "naturalness": "한국어로 자연스럽게 읽히는지 확인하세요.",
     "consistency": "용어와 스타일의 일관성을 확인하세요.",
-    "tone": "원문의 톤과 분위기가 보존되었는지 확인하세요."
+    "tone": "원문의 톤과 분위기가 보존되었는지 확인하세요.",
 }
+
 
 def get_translation_prompt(genre: str = "general") -> str:
     """
     지정된 장르에 맞는 번역 프롬프트를 생성합니다.
-    
+
     Args:
         genre: 소설 장르 (fantasy, sci-fi, romance, mystery, horror, general)
-        
+
     Returns:
         str: 완성된 번역 프롬프트
     """
     # 장르별 지침 가져오기
-    genre_guidelines = GENRE_SPECIFIC_GUIDELINES.get(
-        genre, 
-        GENRE_SPECIFIC_GUIDELINES["general"]
-    )
-    
+    genre_guidelines = GENRE_SPECIFIC_GUIDELINES.get(genre, GENRE_SPECIFIC_GUIDELINES["general"])
+
     # 시스템 메시지 생성
     system_message = SYSTEM_MESSAGE_TEMPLATE.format(
-        base_principles=BASE_TRANSLATION_PRINCIPLES,
-        genre_guidelines=genre_guidelines
+        base_principles=BASE_TRANSLATION_PRINCIPLES, genre_guidelines=genre_guidelines
     )
-    
+
     # 전체 프롬프트 조합
     full_prompt = f"""{system_message}
 
 {TRANSLATION_REQUEST_TEMPLATE}"""
-    
+
     return full_prompt
+
 
 def get_genre_list() -> list:
     """
     지원하는 장르 목록을 반환합니다.
-    
+
     Returns:
         list: 지원하는 장르 목록
     """
     return list(GENRE_SPECIFIC_GUIDELINES.keys())
 
+
 def validate_genre(genre: str) -> bool:
     """
     장르가 유효한지 확인합니다.
-    
+
     Args:
         genre: 확인할 장르
-        
+
     Returns:
         bool: 유효한 장르인 경우 True
     """
     return genre in GENRE_SPECIFIC_GUIDELINES
 
+
 # 번역 품질 개선을 위한 추가 프롬프트들
 IMPROVEMENT_PROMPTS = {
     "consistency_check": """이전 번역과의 일관성을 확인하고, 동일한 용어나 인명은 같은 방식으로 번역되었는지 점검하세요.""",
-    
     "dialogue_check": """대화문의 경우 캐릭터의 나이, 성격, 사회적 지위를 고려하여 적절한 존댓말/반말과 말투를 사용했는지 확인하세요.""",
-    
     "cultural_adaptation": """문화적 차이가 있는 표현의 경우, 한국 독자가 이해하기 쉽도록 번역되었지만 원문의 의미를 벗어나지 않았는지 확인하세요.""",
-    
-    "literary_quality": """번역문이 단순한 정보 전달을 넘어서 문학적 품질을 유지하고 있는지 확인하세요."""
+    "literary_quality": """번역문이 단순한 정보 전달을 넘어서 문학적 품질을 유지하고 있는지 확인하세요.""",
 }
 
 # 오류 방지를 위한 체크리스트
 ERROR_PREVENTION_CHECKLIST = [
     "원문에 없는 내용을 추가하지 않았는가?",
-    "원문의 의미가 정확히 전달되었는가?", 
+    "원문의 의미가 정확히 전달되었는가?",
     "고유명사가 원문 그대로 유지되었는가?",
     "대화문의 화자가 명확한가?",
     "문맥상 앞뒤가 자연스럽게 연결되는가?",
     "한국어 문법과 어법에 맞는가?",
-    "전체적인 톤과 분위기가 보존되었는가?"
+    "전체적인 톤과 분위기가 보존되었는가?",
 ]
