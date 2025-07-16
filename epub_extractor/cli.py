@@ -10,16 +10,23 @@ import argparse
 import os
 import sys
 
-from .extractor import EPUBExtractor
-from .utils import validate_chunk_sizes
-from .translator import OllamaTranslator
-from .prompts import get_genre_list
-from .builder import build_korean_epub
-from .rebuilder import rebuild_epub_from_extracted
 from config import (
-    DEFAULT_MODEL, DEFAULT_TEMPERATURE, DEFAULT_MAX_RETRIES, DEFAULT_GENRE,
-    DEFAULT_MAX_CHUNK_SIZE, DEFAULT_MIN_CHUNK_SIZE, SUPPORTED_GENRES, DEFAULT_TRANSLATED_DIR
+    DEFAULT_GENRE,
+    DEFAULT_MAX_CHUNK_SIZE,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MIN_CHUNK_SIZE,
+    DEFAULT_MODEL,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_TRANSLATED_DIR,
+    SUPPORTED_GENRES,
 )
+
+from .builder import build_korean_epub
+from .extractor import EPUBExtractor
+from .prompts import get_genre_list
+from .rebuilder import rebuild_epub_from_extracted
+from .translator import OllamaTranslator
+from .utils import validate_chunk_sizes
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
