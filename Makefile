@@ -1,4 +1,4 @@
-# 개발 자동화 Makefile
+# EPUB 관리 Makefile
 
 .PHONY: test lint format coverage clean
 

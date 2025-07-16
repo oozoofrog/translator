@@ -24,7 +24,6 @@ from .chunker import TextChunker
 from .cli import main
 from .extractor import EPUBExtractor
 from .parser import ImprovedHTMLParser, extract_text_from_html
-from .translator import OllamaTranslator
 
 # 편의를 위한 유틸리티 함수들
 from .utils import clean_text, create_safe_filename, extract_chapter_name, should_skip_chapter, validate_chunk_sizes
@@ -35,7 +34,6 @@ __all__ = [
     "TextChunker",
     "ImprovedHTMLParser",
     "EPUBExtractor",
-    "OllamaTranslator",
     "EPUBBuilder",
     # 함수들
     "extract_text_from_html",

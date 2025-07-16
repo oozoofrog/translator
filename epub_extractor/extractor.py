@@ -291,58 +291,7 @@ class EPUBExtractor:
             except Exception as e:
                 print(f"⚠️  챕터 '{chapter['name']}' 처리 중 오류: {e}")
 
-    def _create_chunk_files(self, output_dir):
-        """LLM 번역용 청크 파일들 생성"""
-        chunks_dir = os.path.join(output_dir, "chunks")
-        all_chunks = []
-
-        print("\n🔄 LLM 번역용 청크 생성 중...")
-
-        for chapter in self.chapters:
-            if "content" not in chapter:
-                continue
-
-            try:
-                # 챕터를 청크로 분할
-                chunks = self.chunker.chunk_text(chapter["content"], chapter["name"])
-
-                for chunk in chunks:
-                    # 청크 파일 저장
-                    chunk_file = os.path.join(chunks_dir, f"{chunk['name']}.txt")
-                    with open(chunk_file, "w", encoding="utf-8") as f:
-                        f.write(chunk["content"])
-
-                    # 전체 청크 리스트에 추가
-                    all_chunks.append(
-                        {"file": f"{chunk['name']}.txt", "chapter": chapter["name"], "size": chunk["size"]}
-                    )
-
-                print(f"   📦 {chapter['name']}: {len(chunks)}개 청크")
-
-            except Exception as e:
-                print(f"⚠️  챕터 '{chapter['name']}' 청킹 중 오류: {e}")
-
-        # 청크 인덱스 파일 생성
-        self._create_chunk_index(chunks_dir, all_chunks)
-
-        print(f"\n✅ 총 {len(all_chunks)}개 청크 생성 완료")
-        print("📋 청크 인덱스: chunks/chunk_index.json")
-
-    def _create_chunk_index(self, chunks_dir, all_chunks):
-        """청크 인덱스 파일 생성"""
-        chunk_index = {
-            "total_chunks": len(all_chunks),
-            "chunk_settings": {"max_size": self.max_chunk_size, "min_size": self.min_chunk_size},
-            "statistics": {
-                "avg_chunk_size": sum(chunk["size"] for chunk in all_chunks) / len(all_chunks) if all_chunks else 0,
-                "total_characters": sum(chunk["size"] for chunk in all_chunks),
-            },
-            "chunks": all_chunks,
-        }
-
-        index_path = os.path.join(chunks_dir, "chunk_index.json")
-        with open(index_path, "w", encoding="utf-8") as f:
-            json.dump(chunk_index, f, ensure_ascii=False, indent=2)
+    # LLM 청크 생성 관련 코드 삭제
 
     def _print_completion_summary(self):
         """추출 완료 요약 출력"""
