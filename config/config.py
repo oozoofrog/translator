@@ -6,8 +6,8 @@
 모든 스크립트에서 사용하는 기본값들을 중앙 집중식으로 관리합니다.
 """
 
-# 기본 Ollama 모델 설정
-DEFAULT_MODEL = "gpt-oss:20b"
+# 기본 Hugging Face 모델 설정
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 
 # 기본 번역 설정
 DEFAULT_TEMPERATURE = 0.1
@@ -25,7 +25,7 @@ DEFAULT_ENABLE_CACHE = True
 SUPPORTED_GENRES = ["fantasy", "sci-fi", "romance", "mystery", "horror", "general"]
 
 # 번역 품질 설정
-DEFAULT_NUM_GPU_LAYERS = None  # None이면 자동
+DEFAULT_DEVICE = "auto"  # auto, cpu, cuda
 
 # 파일 확장자
 EPUB_EXTENSION = ".epub"

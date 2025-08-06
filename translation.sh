@@ -61,10 +61,11 @@ show_help() {
     echo "Translate 옵션:"
     echo "  -i, --input-dir <dir>     입력 디렉토리 (필수)"
     echo "  -o, --output-dir <dir>    출력 디렉토리 (기본값: translated/)"
-    echo "  -m, --model <model>       사용할 Ollama 모델 (기본값: gpt-oss:20b)"
+    echo "  -m, --model <model>       사용할 Hugging Face 모델 (기본값: openai/gpt-oss-20b)"
     echo "  -g, --genre <genre>       소설 장르 (기본값: fantasy)"
     echo "  --temperature <temp>      번역 온도 (기본값: 0.1)"
     echo "  --max-retries <num>       최대 재시도 횟수 (기본값: 3)"
+    echo "  --device <device>         사용할 디바이스 (cpu, cuda, auto)"
     echo "  --resume                  이전 번역 작업 이어서 진행"
     echo "  -v, --verbose             상세한 출력 표시"
     echo ""
@@ -77,17 +78,18 @@ show_help() {
     echo "Full 워크플로우 옵션:"
     echo "  -f, --file <file>             EPUB 파일 경로 (필수)"
     echo "  -w, --work-dir <dir>          작업 디렉토리 (기본값: 파일명)"
-    echo "  -m, --model <model>           사용할 Ollama 모델 (기본값: gpt-oss:20b)"
+    echo "  -m, --model <model>           사용할 Hugging Face 모델 (기본값: openai/gpt-oss-20b)"
     echo "  -g, --genre <genre>           소설 장르 (기본값: fantasy)"
     echo "  --max-chunk-size <size>       최대 청크 크기 (기본값: 3000)"
     echo "  --temperature <temp>          번역 온도 (기본값: 0.1)"
+    echo "  --device <device>             사용할 디바이스 (cpu, cuda, auto)"
     echo "  -v, --verbose                 상세한 출력 표시"
     echo ""
     echo "예시:"
     echo "  $0 extract -f novel.epub"
-    echo "  $0 translate -i novel/ -m gpt-oss:20b"
+    echo "  $0 translate -i novel/ -m openai/gpt-oss-20b"
     echo "  $0 combine -f novel.epub -i translated/"
-    echo "  $0 full -f novel.epub -m gpt-oss:20b"
+    echo "  $0 full -f novel.epub -m openai/gpt-oss-20b"
 }
 
 # 가상환경 활성화 함수
@@ -198,10 +200,11 @@ extract_epub() {
 translate_chunks() {
     local input_dir=""
     local output_dir="translated"
-    local model="gpt-oss:20b"
+    local model="openai/gpt-oss-20b"
     local genre="fantasy"
     local temperature="0.1"
     local max_retries="3"
+    local device="auto"
     local resume=false
     local verbose=false
     
@@ -230,6 +233,10 @@ translate_chunks() {
                 ;;
             --max-retries)
                 max_retries="$2"
+                shift 2
+                ;;
+            --device)
+                device="$2"
                 shift 2
                 ;;
             --resume)
@@ -267,7 +274,7 @@ translate_chunks() {
     fi
     
     log_info "번역 시작: $input_dir → $output_dir"
-    log_info "모델: $model, 장르: $genre"
+    log_info "모델: $model, 장르: $genre, 디바이스: $device"
     
     # 가상환경 활성화
     activate_venv
@@ -278,6 +285,7 @@ translate_chunks() {
     args+=("--genre" "$genre")
     args+=("--temperature" "$temperature")
     args+=("--max-retries" "$max_retries")
+    args+=("--device" "$device")
     
     if [ "$resume" = true ]; then
         args+=("--resume")
@@ -383,10 +391,11 @@ combine_epub() {
 full_workflow() {
     local epub_file=""
     local work_dir=""
-    local model="gpt-oss:20b"
+    local model="openai/gpt-oss-20b"
     local genre="fantasy"
     local max_chunk_size=3000
     local temperature="0.1"
+    local device="auto"
     local verbose=false
     
     # 옵션 파싱
@@ -414,6 +423,10 @@ full_workflow() {
                 ;;
             --temperature)
                 temperature="$2"
+                shift 2
+                ;;
+            --device)
+                device="$2"
                 shift 2
                 ;;
             -v|--verbose)
@@ -453,6 +466,7 @@ full_workflow() {
     echo "📁 작업 디렉토리: $work_dir"
     echo "🤖 모델: $model"
     echo "📚 장르: $genre"
+    echo "💻 디바이스: $device"
     echo "📄 출력: $output_file"
     echo "======================================"
     echo ""
@@ -468,7 +482,7 @@ full_workflow() {
     
     # 2. 번역
     log_info "2단계: 청크 번역"
-    local translate_args=("-i" "$work_dir" "-o" "$translated_dir" "-m" "$model" "-g" "$genre" "--temperature" "$temperature")
+    local translate_args=("-i" "$work_dir" "-o" "$translated_dir" "-m" "$model" "-g" "$genre" "--temperature" "$temperature" "--device" "$device")
     if [ "$verbose" = true ]; then
         translate_args+=("-v")
     fi

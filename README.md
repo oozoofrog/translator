@@ -1,6 +1,6 @@
 # 📚 EPUB 번역기 (EPUB Translator)
 
-영어 EPUB 파일을 한국어로 자동 번역하는 도구입니다. Ollama를 사용하여 로컬에서 고품질 번역을 수행합니다.
+영어 EPUB 파일을 한국어로 자동 번역하는 도구입니다. Hugging Face Transformers를 사용하여 로컬에서 고품질 번역을 수행합니다.
 
 ## ✨ 주요 기능
 
@@ -11,8 +11,8 @@
 - **한글 EPUB 생성**: 번역된 텍스트로 새로운 EPUB 자동 생성
 
 ### 🤖 번역 기능
-- **로컬 LLM**: Ollama를 통한 프라이버시 보호 번역
-- **다양한 모델 지원**: `gpt-oss:20b` (기본값) 외 다양한 모델 사용 가능
+- **로컬 LLM**: Hugging Face Transformers를 통한 프라이버시 보호 번역
+- **다양한 모델 지원**: `openai/gpt-oss-20b` (기본값) 외 다양한 모델 사용 가능
 - **장르별 최적화**: 판타지, SF, 로맨스 등 장르별 번역 스타일
 - **진행 상황 추적**: 실시간 번역 진도 표시 및 중단/재개 지원
 - **캐싱 시스템**: 번역 결과 캐싱으로 재번역 속도 향상
@@ -34,17 +34,14 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # 의존성 설치
 pip install -r requirements.txt
 
-# Ollama 설치 (macOS/Linux)
-curl -fsSL https://ollama.com/install.sh | sh
-
-# 번역 모델 다운로드
-ollama pull gpt-oss:20b
+# GPU 사용 시 (선택사항)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 ```
 
 ### 2. 원클릭 번역
 ```bash
 # 영문 EPUB → 한글 EPUB 완전 자동화
-./translation.sh full -f "영문소설.epub" -m gpt-oss:20b
+./translation.sh full -f "영문소설.epub" -m openai/gpt-oss-20b
 ```
 
 ### 3. 단계별 사용법
@@ -53,7 +50,7 @@ ollama pull gpt-oss:20b
 ./translation.sh extract -f "sample.epub"
 
 # 2단계: 번역 실행
-./translation.sh translate -i "sample/" -m gpt-oss:20b
+./translation.sh translate -i "sample/" -m openai/gpt-oss-20b
 
 # 3단계: 한글 EPUB 생성
 ./translation.sh combine -f "sample.epub" -i "sample/translated"
@@ -120,10 +117,11 @@ translator/
 옵션:
   -i, --input-dir <dir>     입력 디렉토리 (필수)
   -o, --output-dir <dir>    출력 디렉토리 (기본값: translated/)
-  -m, --model <model>       사용할 Ollama 모델 (기본값: gpt-oss:20b)
+  -m, --model <model>       사용할 Hugging Face 모델 (기본값: openai/gpt-oss-20b)
   -g, --genre <genre>       소설 장르 (기본값: fantasy)
   --temperature <temp>      번역 온도 (기본값: 0.1)
   --max-retries <num>       최대 재시도 횟수 (기본값: 3)
+  --device <device>         사용할 디바이스 (cpu, cuda, auto)
   --resume                  이전 번역 작업 이어서 진행
   -v, --verbose             상세한 출력 표시
 ```
@@ -146,10 +144,11 @@ translator/
 옵션:
   -f, --file <file>             EPUB 파일 경로 (필수)
   -w, --work-dir <dir>          작업 디렉토리 (기본값: 파일명)
-  -m, --model <model>           사용할 Ollama 모델 (기본값: gpt-oss:20b)
+  -m, --model <model>           사용할 Hugging Face 모델 (기본값: openai/gpt-oss-20b)
   -g, --genre <genre>           소설 장르 (기본값: fantasy)
   --max-chunk-size <size>       최대 청크 크기 (기본값: 3000)
   --temperature <temp>          번역 온도 (기본값: 0.1)
+  --device <device>             사용할 디바이스 (cpu, cuda, auto)
   -v, --verbose                 상세한 출력 표시
 ```
 
@@ -191,7 +190,7 @@ DEFAULT_ENABLE_CACHE = True     # 번역 캐싱 활성화
 
 `.env` 파일을 생성하여 설정 가능:
 ```bash
-OLLAMA_MODEL=gpt-oss:20b
+HUGGINGFACE_MODEL=openai/gpt-oss-20b
 DEBUG=True
 ```
 
@@ -232,9 +231,10 @@ ls sample_translation_work/translated_chunks/ | wc -l
 ```bash
 # SF 소설을 다른 모델로 번역
 ./translation.sh full -f "Dune.epub" \
-  -m llama3:8b \
+  -m openai/gpt-oss-120b \
   -g sci-fi \
-  --temperature 0.2
+  --temperature 0.2 \
+  --device cuda
 ```
 
 ### 단계별 수동 실행
@@ -244,8 +244,9 @@ ls sample_translation_work/translated_chunks/ | wc -l
 
 # 2단계: 번역 (재개 기능 활용)
 ./translation.sh translate -i "LargeNovel/" \
-  -m gpt-oss:20b \
+  -m openai/gpt-oss-20b \
   --max-retries 5 \
+  --device auto \
   --resume
 
 # 3단계: 통합
@@ -256,22 +257,22 @@ ls sample_translation_work/translated_chunks/ | wc -l
 ```bash
 # 여러 EPUB 파일 일괄 번역
 for epub in *.epub; do
-  ./translation.sh full -f "$epub" -m gpt-oss:20b -v
+  ./translation.sh full -f "$epub" -m openai/gpt-oss-20b -v
 done
 ```
 
 ## 🐛 문제 해결
 
-### Ollama 연결 실패
+### Hugging Face 모델 로드 실패
 ```bash
-# Ollama 서비스 상태 확인
-ollama list
+# 모델 다운로드 확인
+python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('openai/gpt-oss-20b')"
 
-# 서비스 재시작
-ollama serve
+# 캐시 정리
+rm -rf ~/.cache/huggingface/
 
-# 모델 재다운로드
-ollama pull gpt-oss:20b
+# 인터넷 연결 확인
+curl -I https://huggingface.co
 ```
 
 ### 메모리 부족
@@ -279,14 +280,14 @@ ollama pull gpt-oss:20b
 # 청크 크기 줄이기
 ./translation.sh extract -f "book.epub" --max-chunk-size 1000
 
-# GPU 메모리 조절 (NVIDIA)
-export OLLAMA_NUM_GPU_LAYERS=20
+# CPU 사용 강제
+./translation.sh translate -i novel/ --device cpu
 ```
 
 ### 번역 품질 개선
 - Temperature 낮추기: `./translation.sh translate -i novel/ --temperature 0.0`
 - 장르 정확히 지정: `./translation.sh translate -i novel/ --genre fantasy`
-- 더 큰 모델 사용: `./translation.sh translate -i novel/ --model gpt-oss:20b`
+- 더 큰 모델 사용: `./translation.sh translate -i novel/ --model openai/gpt-oss-120b`
 
 ## 🧪 개발 및 테스트
 
@@ -354,7 +355,8 @@ pre-commit install
 
 ## 🔗 관련 링크
 
-- [Ollama 공식 사이트](https://ollama.com)
+- [Hugging Face Transformers](https://huggingface.co/docs/transformers)
+- [Hugging Face 모델 허브](https://huggingface.co/models)
 - [Python 패키징 가이드](https://packaging.python.org)
 - [EPUB 3 스펙](https://www.w3.org/publishing/epub3/)
 
