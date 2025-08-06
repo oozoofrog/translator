@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 
-from config import (
+from config.config import (
     DEFAULT_GENRE,
     DEFAULT_MAX_CHUNK_SIZE,
     DEFAULT_MAX_RETRIES,
@@ -21,10 +21,9 @@ from config import (
     SUPPORTED_GENRES,
 )
 
-from .builder import build_korean_epub
+from .builder import build_korean_epub, rebuild_epub_from_extracted
 from .extractor import EPUBExtractor
 from .prompts import get_genre_list
-from .rebuilder import rebuild_epub_from_extracted
 from .translator import OllamaTranslator
 from .utils import validate_chunk_sizes
 
