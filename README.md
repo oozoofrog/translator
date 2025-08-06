@@ -1,329 +1,302 @@
-# EPUB 관리 프로젝트
+# 📚 EPUB 번역기 (EPUB Translator)
 
-EPUB 파일 추출, 분할, 재조립, 메타데이터 관리 도구입니다.
-
-## 폴더 구조
-
-```
-config/                # 설정 파일 (config.py 등)
-data/
-  raw/                 # 원본 데이터
-  processed/           # 전처리/중간 산출물
-outputs/               # 번역 결과 등 최종 산출물
-epub_extractor/        # 핵심 파이썬 모듈
-  ...
-tests/
-  unit/                # 단위 테스트
-  resources/           # 테스트/샘플 데이터
-venv/                  # 가상환경 (gitignore)
-```
-
-## 주요 개발/테스트 명령어
-
-- `make test`      : 단위 테스트 실행
-- `make lint`      : 코드 린트 검사 (flake8)
-- `make format`    : 코드 자동 포맷팅 (black, isort)
-- `make coverage`  : 커버리지 리포트 출력
-- `make clean`     : 캐시/임시 파일 정리
-
-## 환경 변수 예시 (.env)
-```
-OLLAMA_MODEL=exaone3.5:7.8b
-DEBUG=True
-```
-
-## 개발/테스트 의존성 (requirements-dev.txt)
-- pytest, pytest-cov, black, isort, flake8 등
-
-## 기타
-- venv/, outputs/, data/raw/ 등은 gitignore로 관리
-- 자세한 워크플로우/기여 가이드는 CLAUDE.md 참고
-
----
-
-# EPUB 파일 추출기 및 번역기 (개선된 버전)
-
-EPUB 파일의 내용을 챕터별로 분리하고 LLM 번역에 적합한 크기의 청크로 나누며, Ollama를 사용하여 영어→한국어 번역을 수행하는 Python 도구입니다.
+영어 EPUB 파일을 한국어로 자동 번역하는 도구입니다. Ollama를 사용하여 로컬에서 고품질 번역을 수행합니다.
 
 ## ✨ 주요 기능
 
-### 📚 기본 기능
-- EPUB 파일의 목차 구조 자동 분석
-- 챕터별로 내용을 개별 텍스트 파일로 분리
-- 문단 구조를 보존하는 개선된 HTML 파싱
-- 제목, 저자 등 메타데이터 자동 추출
-- 불필요한 페이지 자동 필터링 (titlepage, cover 등)
+### 📖 EPUB 처리
+- **자동 추출**: EPUB 파일에서 텍스트 자동 추출
+- **구조 보존**: 원본 챕터 구조와 메타데이터 완벽 보존
+- **지능형 청킹**: LLM 번역에 최적화된 텍스트 분할
+- **한글 EPUB 생성**: 번역된 텍스트로 새로운 EPUB 자동 생성
 
-### 🤖 LLM 번역 최적화
-- **지능형 텍스트 분할**: 문단 → 문장 → 단어 순으로 적절하게 분할
-- **번역 적합한 청크 크기**: 기본값 1000-3000자 (조정 가능)
-- **문맥 보존**: 문단 경계를 지켜 자연스러운 번역 단위 생성
-- **청크 인덱스**: 번역 진행 상황 추적 가능
+### 🤖 번역 기능
+- **로컬 LLM**: Ollama를 통한 프라이버시 보호 번역
+- **다양한 모델 지원**: `gpt-oss:20b` (기본값) 외 다양한 모델 사용 가능
+- **장르별 최적화**: 판타지, SF, 로맨스 등 장르별 번역 스타일
+- **진행 상황 추적**: 실시간 번역 진도 표시 및 중단/재개 지원
+- **캐싱 시스템**: 번역 결과 캐싱으로 재번역 속도 향상
 
-### 🌏 Ollama 번역 기능
-- **자동 번역**: Ollama를 사용한 영어→한국어 자동 번역
-- **진행 상황 추적**: 실시간 번역 진행도 표시 및 중단/재개 지원
-- **오류 복구**: 번역 실패시 자동 재시도 및 오류 처리
-- **번역 품질 최적화**: 소설 번역에 특화된 프롬프트 사용
-- **배치 처리**: 여러 청크를 자동으로 순차 번역
+### 🛠️ 개발자 친화적
+- **모듈식 구조**: 재사용 가능한 Python 패키지
+- **CLI 인터페이스**: 간편한 명령줄 도구
+- **배치 스크립트**: 원클릭 번역 자동화
+- **상세한 로깅**: 디버깅을 위한 verbose 모드
 
-### 📚 EPUB 재조립 기능
-- **한글 EPUB 생성**: 번역된 텍스트를 원본 구조 그대로 EPUB으로 재조립
-- **메타데이터 보존**: 원본의 제목, 저자 등 정보 유지 및 한글판 표시 추가
-- **구조 유지**: 원본 EPUB의 챕터 순서와 목차 구조 완전 보존
-- **자동 파일명**: 원본 파일명에 `-ko` 접미사를 붙여 자동 생성
+## 🚀 빠른 시작
 
-## 🚀 설치 및 실행
-
-### 1. 자동 설치 및 설정
+### 1. 설치
 ```bash
-# 모든 것을 자동으로 설치하고 설정
-./activate.sh
-```
+# Python 가상환경 생성 및 활성화
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-이 스크립트는 다음을 자동으로 수행합니다:
-- Ollama 설치 확인 및 자동 설치
-- Python 가상환경 생성 및 활성화
-- 필요한 의존성 설치
-- 기본 번역 모델(llama3.1:8b) 다운로드
+# 의존성 설치
+pip install -r requirements.txt
 
-### 2. 수동 설치 (필요시)
-```bash
-# Ollama 수동 설치
+# Ollama 설치 (macOS/Linux)
 curl -fsSL https://ollama.com/install.sh | sh
 
 # 번역 모델 다운로드
-ollama pull llama3.1:8b
-
-# Python 의존성 설치
-pip install -r requirements.txt
+ollama pull gpt-oss:20b
 ```
 
-### 3. EPUB 파일 추출
+### 2. 원클릭 번역
 ```bash
-# 기본 추출
-./extract.sh "소설파일.epub"
-
-# 작은 청크로 분할 (더 세밀한 번역)
-./extract.sh "소설파일.epub" --max-chunk-size 2000 --min-chunk-size 500
-
-# 챕터 파일만 생성 (청크 없음)
-./extract.sh "소설파일.epub" --no-chunks
-
-# 출력 디렉토리 지정
-./extract.sh "소설파일.epub" --output-dir "번역프로젝트"
+# 영문 EPUB → 한글 EPUB 자동 변환
+python3 -m epub_extractor.cli translate "영문소설.epub"
 ```
 
-### 4. 번역 실행
+### 3. 단계별 사용법
 ```bash
-# 기본 번역 (추출된 디렉토리 → 번역 출력 디렉토리)
-./translate.sh "소설파일/" "번역결과/"
+# 1단계: EPUB 텍스트 추출
+./extract.sh "sample.epub"
 
-# 다른 모델 사용
-./translate.sh "소설파일/" "번역결과/" --model llama3:8b
+# 2단계: 번역 실행
+python3 -m epub_extractor.cli translate "sample.epub" \
+  --model gpt-oss:20b \
+  --temperature 0.1
 
-# 번역 설정 조정
-./translate.sh "소설파일/" "번역결과/" --temperature 0.1 --max-retries 5
-
-# 중단된 번역 이어서 진행
-./translate.sh "소설파일/" "번역결과/" --resume
-
-# 도움말 보기
-./translate.sh --help
+# 3단계: 한글 EPUB 생성
+./build.sh "sample.epub" "sample_translation_work"
 ```
 
-### 5. 한글 EPUB 생성
+## 📁 프로젝트 구조
+
+```
+translator/
+├── epub_extractor/          # 핵심 Python 패키지
+│   ├── __init__.py         # 패키지 초기화
+│   ├── cli.py              # CLI 인터페이스
+│   ├── extractor.py        # EPUB 추출 엔진
+│   └── utils.py            # 유틸리티 함수
+├── config/                  # 설정 파일
+│   └── config.py           # 기본 설정값
+├── tests/                   # 테스트 코드
+│   ├── unit/               # 단위 테스트
+│   └── resources/          # 테스트 리소스
+├── translated/              # 번역 결과물
+├── extract.sh              # EPUB 추출 스크립트
+├── build.sh                # EPUB 생성 스크립트
+├── requirements.txt        # Python 의존성
+└── README.md               # 이 문서
+```
+
+## 🔧 상세 사용법
+
+### CLI 명령어
+
+#### extract - EPUB 텍스트 추출
 ```bash
-# 기본 한글 EPUB 생성 (원본파일명-ko.epub)
-./build.sh \"원본.epub\" \"번역결과/\"
+python3 -m epub_extractor.cli extract [OPTIONS] EPUB_FILE
 
-# 출력 파일명 지정
-./build.sh \"원본.epub\" \"번역결과/\" \"한글소설.epub\"
-
-# 상세 출력으로 생성
-./build.sh \"원본.epub\" \"번역결과/\" --verbose
+옵션:
+  --output-dir DIR         출력 디렉토리 (기본: EPUB명_translation_work)
+  --max-chunk-size SIZE    최대 청크 크기 (기본: 2000)
+  --min-chunk-size SIZE    최소 청크 크기 (기본: 1000)
+  --extract-only          청킹 없이 원본 HTML만 추출
+  --verbose               상세 출력 모드
 ```
 
-### 6. 전체 워크플로우 (원클릭 번역)
+#### translate - 번역 실행
 ```bash
-# 영문 EPUB → 한글 EPUB 완전 자동화
-./translate_to_korean.sh \"영문소설.epub\"
+python3 -m epub_extractor.cli translate [OPTIONS] EPUB_FILE
 
-# 고급 옵션으로 번역
-./translate_to_korean.sh \"novel.epub\" --genre sci-fi --model llama3:8b
-
-# 임시 파일 보존 (디버깅용)
-./translate_to_korean.sh \"novel.epub\" --keep-temp --verbose
+옵션:
+  --model MODEL           Ollama 모델명 (기본: gpt-oss:20b)
+  --temperature TEMP      창의성 수준 0.0-1.0 (기본: 0.1)
+  --max-retries N         재시도 횟수 (기본: 3)
+  --genre GENRE           장르 (fantasy/sci-fi/romance/mystery/horror/general)
+  --cache                 번역 캐싱 활성화
+  --verbose              상세 출력 모드
 ```
 
-## 📁 출력 구조
-
-```
-소설파일/                    # 추출 결과
-├── info.json              # 📄 책 정보 (제목, 저자, 언어 등)
-├── chapters/              # 📁 원본 챕터 파일들
-│   ├── Chapter_001.txt
-│   ├── Chapter_002.txt
-│   └── ...
-└── chunks/                # 📁 LLM 번역용 청크들
-    ├── Chapter_001_part_01.txt
-    ├── Chapter_001_part_02.txt
-    ├── chunk_index.json   # 📋 청크 인덱스
-    └── ...
-
-번역결과/                    # 번역 결과
-├── translated_chunks/     # 📁 번역된 청크 파일들
-│   ├── ko_Chapter_001_part_01.txt
-│   ├── ko_Chapter_001_part_02.txt
-│   └── ...
-├── translation_index.json     # 📋 번역 정보 및 통계
-└── translation_progress.json  # 📊 번역 진행 상황
-
-소설파일-ko.epub              # 📚 생성된 한글 EPUB 파일
-```
-
-## 🔧 CLI 옵션
-
-### 추출 옵션
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--max-chunk-size N` | 최대 청크 크기 (문자 수) | 3000 |
-| `--min-chunk-size N` | 최소 청크 크기 (문자 수) | 1000 |
-| `--no-chunks` | 청크 파일 생성하지 않음 | false |
-| `--output-dir DIR` | 출력 디렉토리 지정 | EPUB 파일명 |
-| `--verbose, -v` | 상세한 출력 표시 | false |
-| `--help, -h` | 도움말 표시 | - |
-
-### 번역 옵션
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--model MODEL` | 사용할 Ollama 모델명 | llama3.1:8b |
-| `--temperature N` | 번역 온도 (0.0-2.0) | 0.1 |
-| `--max-retries N` | 재시도 횟수 | 3 |
-| `--genre GENRE` | 소설 장르 | fantasy |
-| `--resume` | 이전 번역 작업 이어서 진행 | false |
-| `--verbose, -v` | 상세한 출력 표시 | false |
-| `--help, -h` | 도움말 표시 | - |
-
-### 빌드 옵션
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--output FILE, -o` | 출력 EPUB 파일 경로 | 원본파일명-ko.epub |
-| `--verbose, -v` | 상세한 출력 표시 | false |
-| `--help, -h` | 도움말 표시 | - |
-
-### 통합 번역 옵션 (translate_to_korean.sh)
-| 옵션 | 설명 | 기본값 |
-|------|------|--------|
-| `--model MODEL` | 사용할 Ollama 모델명 | llama3.1:8b |
-| `--genre GENRE` | 소설 장르 | fantasy |
-| `--max-chunk-size N` | 최대 청크 크기 | 3000 |
-| `--min-chunk-size N` | 최소 청크 크기 | 1000 |
-| `--temperature N` | 번역 온도 (0.0-2.0) | 0.1 |
-| `--output FILE` | 출력 EPUB 파일명 | 원본파일명-ko.epub |
-| `--keep-temp` | 임시 파일들 보존 | false |
-| `--resume` | 중단된 번역 이어서 진행 | false |
-| `--verbose, -v` | 상세한 출력 표시 | false |
-| `--help, -h` | 도움말 표시 | - |
-
-## 🎯 번역 워크플로우
-
-### 자동 워크플로우 (권장)
+#### build - 한글 EPUB 생성
 ```bash
-# 원클릭으로 영문 EPUB → 한글 EPUB 변환
-./translate_to_korean.sh "영문소설.epub"
+python3 -m epub_extractor.cli build [OPTIONS] ORIGINAL_EPUB TRANSLATED_DIR
+
+옵션:
+  --output FILE          출력 파일명 (기본: 원본명-ko.epub)
+  --verbose             상세 출력 모드
 ```
 
-### 수동 워크플로우 (단계별 제어)
+### 설정 파일 (config/config.py)
 
-#### 1단계: EPUB 추출
-```bash
-./extract.sh "novel.epub"
-```
-
-#### 2단계: 책 정보 확인
-```bash
-cat novel/info.json
-```
-
-#### 3단계: 번역 실행
-```bash
-./translate.sh "novel/" "translated/"
-```
-
-#### 4단계: 한글 EPUB 생성
-```bash
-./build.sh "novel.epub" "translated/"
-```
-
-### API 사용 (프로그래밍)
 ```python
-from epub_extractor import EPUBExtractor, OllamaTranslator, build_korean_epub
+# 기본 모델 설정
+DEFAULT_MODEL = "gpt-oss:20b"
 
-# 1. 추출
-extractor = EPUBExtractor("novel.epub")
-extractor.extract("extracted/")
+# 번역 설정
+DEFAULT_TEMPERATURE = 0.1      # 번역 창의성 (낮을수록 일관성 향상)
+DEFAULT_MAX_RETRIES = 3         # 오류 시 재시도 횟수
+DEFAULT_GENRE = "fantasy"       # 기본 장르
 
-# 2. 번역
-translator = OllamaTranslator(genre="fantasy")
-translator.translate_chunks("extracted/", "translated/")
+# 청크 크기 설정
+DEFAULT_MAX_CHUNK_SIZE = 2000   # 최대 청크 크기
+DEFAULT_MIN_CHUNK_SIZE = 1000   # 최소 청크 크기
 
-# 3. 한글 EPUB 생성
-korean_epub = build_korean_epub("novel.epub", "translated/")
+# 캐싱 설정
+DEFAULT_ENABLE_CACHE = True     # 번역 캐싱 활성화
 ```
 
-## 🛠️ 기술적 특징
+### 환경 변수
 
-### 지능형 분할 알고리즘
-1. **문단 우선**: 연속된 줄바꿈(`\n\n`)을 기준으로 문단 단위 분할
-2. **문장 보완**: 문단이 너무 큰 경우 문장 단위(`.!?`)로 추가 분할
-3. **단어 분할**: 최후 수단으로 단어 단위 분할 (문맥 보존 최우선)
-
-### HTML 파싱 개선
-- `<p>`, `<div>`, `<section>` 등을 문단으로 인식
-- `<script>`, `<style>` 태그 내용 제외
-- HTML 엔티티 자동 디코딩
-- 원문의 문단 구조 최대한 보존
-
-### 메타데이터 추출
-- Dublin Core 표준 준수
-- 제목, 저자, 언어, 출판사, 설명 등 자동 추출
-- JSON 형태로 구조화된 정보 제공
-
-## 📋 요구사항
-
-- **Python**: 3.6 이상
-- **의존성**: 표준 라이브러리만 사용 (추가 설치 불필요)
-- **지원 형식**: EPUB 2.0/3.0 (ZIP 기반)
-
-## 🗂️ 프로젝트 구조
-
-```
-novels/
-├── epub_extractor/           # 📦 모듈형 패키지 (v2.0.0)
-│   ├── __init__.py          # 패키지 초기화
-│   ├── extractor.py         # EPUB 추출 엔진
-│   ├── chunker.py           # 지능형 텍스트 분할기
-│   ├── parser.py            # HTML → 텍스트 파서
-│   ├── translator.py        # Ollama 번역기
-│   ├── builder.py           # EPUB 재조립기
-│   ├── prompts.py           # 장르별 번역 프롬프트
-│   ├── utils.py             # 유틸리티 함수들
-│   └── cli.py               # 명령줄 인터페이스
-├── extract.sh               # 🔧 EPUB 추출 스크립트
-├── translate.sh             # 🌏 번역 실행 스크립트
-├── build.sh                 # 📚 EPUB 빌드 스크립트
-├── translate_to_korean.sh   # 🎯 통합 번역 스크립트 (원클릭)
-├── activate.sh              # 🐍 환경 설정 스크립트
-├── requirements.txt         # 📋 Python 의존성
-├── CLAUDE.md                # 🤖 Claude Code 작업 가이드
-├── venv/                    # 📁 Python 가상환경
-└── README.md                # 📖 사용 설명서
+`.env` 파일을 생성하여 설정 가능:
+```bash
+OLLAMA_MODEL=gpt-oss:20b
+DEBUG=True
 ```
 
-## 💡 팁
+## 📊 번역 워크플로우
 
-- **작은 청크**: 더 정확한 번역을 원한다면 `--max-chunk-size 2000` 사용
-- **큰 청크**: 문맥을 더 보존하고 싶다면 `--max-chunk-size 4000` 사용
-- **청크 없음**: 원본 텍스트만 필요하다면 `--no-chunks` 사용
-- **파일명**: 특수문자가 포함된 EPUB 파일명은 따옴표로 감싸기
+### 작업 디렉토리 구조
+```
+sample_translation_work/
+├── chunks/                    # 원본 텍스트 청크
+│   ├── chapter_01_part_01.txt
+│   └── ...
+├── translated_chunks/         # 번역된 텍스트
+│   ├── ko_chapter_01_part_01.txt
+│   └── ...
+├── html_files/               # 원본 HTML 파일
+├── index.json               # EPUB 구조 정보
+└── translation_index.json   # 번역 진행 상태
+```
+
+### 번역 진행 상태 확인
+```bash
+# 진행 상태 보기
+cat sample_translation_work/translation_index.json | python3 -m json.tool
+
+# 번역된 파일 수 확인
+ls sample_translation_work/translated_chunks/ | wc -l
+```
+
+## 🎯 사용 예제
+
+### 기본 번역
+```bash
+# 가장 간단한 사용법
+python3 -m epub_extractor.cli translate "Harry Potter.epub"
+```
+
+### 고급 설정으로 번역
+```bash
+# SF 소설을 다른 모델로 번역
+python3 -m epub_extractor.cli translate "Dune.epub" \
+  --model llama3:8b \
+  --genre sci-fi \
+  --temperature 0.2 \
+  --cache
+```
+
+### 대용량 파일 처리
+```bash
+# 작은 청크로 분할하여 메모리 효율적 처리
+./extract.sh "LargeNovel.epub" --max-chunk-size 1000
+
+# 번역 실행
+python3 -m epub_extractor.cli translate "LargeNovel.epub" \
+  --max-retries 5
+```
+
+## 🐛 문제 해결
+
+### Ollama 연결 실패
+```bash
+# Ollama 서비스 상태 확인
+ollama list
+
+# 서비스 재시작
+ollama serve
+
+# 모델 재다운로드
+ollama pull gpt-oss:20b
+```
+
+### 메모리 부족
+```bash
+# 청크 크기 줄이기
+./extract.sh "book.epub" --max-chunk-size 1000
+
+# GPU 메모리 조절 (NVIDIA)
+export OLLAMA_NUM_GPU_LAYERS=20
+```
+
+### 번역 품질 개선
+- Temperature 낮추기: `--temperature 0.0`
+- 장르 정확히 지정: `--genre fantasy`
+- 더 큰 모델 사용: `--model gpt-oss:20b`
+
+## 🧪 개발 및 테스트
+
+### 테스트 실행
+```bash
+# 단위 테스트
+make test
+
+# 커버리지 리포트
+make coverage
+
+# 코드 린트
+make lint
+
+# 코드 포맷팅
+make format
+```
+
+### 개발 환경 설정
+```bash
+# 개발 의존성 설치
+pip install -r requirements-dev.txt
+
+# pre-commit 훅 설치
+pre-commit install
+```
+
+## 📝 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+## 🤝 기여하기
+
+기여를 환영합니다! 다음 단계를 따라주세요:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 💡 팁과 트릭
+
+### 성능 최적화
+- **병렬 처리**: 여러 EPUB 파일 동시 번역 가능
+- **캐싱 활용**: `--cache` 옵션으로 재번역 속도 향상
+- **청크 크기 조절**: 파일 크기에 맞게 청크 크기 최적화
+
+### 번역 품질
+- **장르 설정**: 정확한 장르 지정으로 번역 품질 향상
+- **Temperature 조절**: 0.0-0.3 범위 권장
+- **모델 선택**: 대용량 모델일수록 품질 향상
+
+### 디버깅
+- **Verbose 모드**: `--verbose`로 상세 로그 확인
+- **임시 파일 보존**: 디버깅 시 작업 디렉토리 확인
+- **단계별 실행**: 문제 구간 파악을 위한 수동 실행
+
+## 📚 지원 형식
+
+- **EPUB 2.0/3.0**: ZIP 기반 EPUB 파일
+- **언어**: 영어 → 한국어 번역
+- **장르**: 판타지, SF, 로맨스, 미스터리, 호러, 일반
+
+## 🔗 관련 링크
+
+- [Ollama 공식 사이트](https://ollama.com)
+- [Python 패키징 가이드](https://packaging.python.org)
+- [EPUB 3 스펙](https://www.w3.org/publishing/epub3/)
+
+---
+
+**문제가 있으시면 이슈를 등록해주세요!**
