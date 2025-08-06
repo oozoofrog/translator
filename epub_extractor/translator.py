@@ -32,6 +32,39 @@ class OllamaTranslator:
         if ollama is None:
             raise ImportError("ollama 패키지가 설치되지 않았습니다. 'pip install ollama'로 설치해주세요.")
     
+    def check_ollama_available(self):
+        """Ollama 서비스 사용 가능 여부 확인"""
+        try:
+            ollama.list()
+            return True
+        except Exception:
+            return False
+    
+    def check_model_available(self):
+        """지정된 모델이 사용 가능한지 확인"""
+        try:
+            models = ollama.list()
+            if hasattr(models, 'models'):
+                model_names = [model.model for model in models.models]
+            else:
+                model_names = [model.get('model', model.get('name', '')) for model in models.get('models', [])]
+            return self.model_name in model_names
+        except Exception:
+            return False
+    
+    def ensure_model_loaded(self):
+        """모델이 로드되어 있는지 확인하고 필요시 로드"""
+        try:
+            # 간단한 테스트 요청으로 모델 로드 확인
+            ollama.chat(
+                model=self.model_name,
+                messages=[{"role": "user", "content": "test"}]
+            )
+            return True
+        except Exception as e:
+            print(f"⚠️  모델 로드 실패: {e}")
+            return False
+    
     def translate_text(self, text):
         """단일 텍스트 번역"""
         prompt = self.translation_prompt + text

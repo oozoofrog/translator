@@ -528,9 +528,7 @@ def run_translate_command(args):
         model_name=args.model,
         temperature=args.temperature,
         max_retries=args.max_retries,
-        genre=args.genre,
-        enable_cache=not args.no_cache,
-        num_gpu_layers=args.num_gpu_layers,
+        genre=args.genre
     )
 
     # Ollama 서비스 확인

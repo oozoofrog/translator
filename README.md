@@ -43,22 +43,20 @@ ollama pull gpt-oss:20b
 
 ### 2. 원클릭 번역
 ```bash
-# 영문 EPUB → 한글 EPUB 자동 변환
-python3 -m epub_extractor.cli translate "영문소설.epub"
+# 영문 EPUB → 한글 EPUB 완전 자동화
+./translation.sh full -f "영문소설.epub" -m gpt-oss:20b
 ```
 
 ### 3. 단계별 사용법
 ```bash
 # 1단계: EPUB 텍스트 추출
-./extract.sh "sample.epub"
+./translation.sh extract -f "sample.epub"
 
 # 2단계: 번역 실행
-python3 -m epub_extractor.cli translate "sample.epub" \
-  --model gpt-oss:20b \
-  --temperature 0.1
+./translation.sh translate -i "sample/" -m gpt-oss:20b
 
 # 3단계: 한글 EPUB 생성
-./build.sh "sample.epub" "sample_translation_work"
+./translation.sh combine -f "sample.epub" -i "sample/translated"
 ```
 
 ## 📁 프로젝트 구조
@@ -69,6 +67,11 @@ translator/
 │   ├── __init__.py         # 패키지 초기화
 │   ├── cli.py              # CLI 인터페이스
 │   ├── extractor.py        # EPUB 추출 엔진
+│   ├── translator.py       # 번역 엔진
+│   ├── chunker.py          # 텍스트 분할
+│   ├── parser.py           # HTML 파싱
+│   ├── builder.py          # EPUB 생성
+│   ├── prompts.py          # 번역 프롬프트
 │   └── utils.py            # 유틸리티 함수
 ├── config/                  # 설정 파일
 │   └── config.py           # 기본 설정값
@@ -76,48 +79,93 @@ translator/
 │   ├── unit/               # 단위 테스트
 │   └── resources/          # 테스트 리소스
 ├── translated/              # 번역 결과물
-├── extract.sh              # EPUB 추출 스크립트
-├── build.sh                # EPUB 생성 스크립트
+├── translation.sh          # 통합 번역 스크립트
+├── activate.sh             # 환경 설정 스크립트
+├── rebuild.sh              # HTML 재구성 스크립트
 ├── requirements.txt        # Python 의존성
 └── README.md               # 이 문서
 ```
 
 ## 🔧 상세 사용법
 
-### CLI 명령어
+### 통합 번역 스크립트 (translation.sh)
 
-#### extract - EPUB 텍스트 추출
+새로운 통합 스크립트로 모든 번역 과정을 간편하게 수행할 수 있습니다.
+
+#### 사용법
 ```bash
-python3 -m epub_extractor.cli extract [OPTIONS] EPUB_FILE
-
-옵션:
-  --output-dir DIR         출력 디렉토리 (기본: EPUB명_translation_work)
-  --max-chunk-size SIZE    최대 청크 크기 (기본: 2000)
-  --min-chunk-size SIZE    최소 청크 크기 (기본: 1000)
-  --extract-only          청킹 없이 원본 HTML만 추출
-  --verbose               상세 출력 모드
+./translation.sh <command> [options]
 ```
 
-#### translate - 번역 실행
+#### Commands
+
+**extract** - EPUB을 챕터와 청크로 추출
 ```bash
-python3 -m epub_extractor.cli translate [OPTIONS] EPUB_FILE
+./translation.sh extract -f "novel.epub" [OPTIONS]
 
 옵션:
-  --model MODEL           Ollama 모델명 (기본: gpt-oss:20b)
-  --temperature TEMP      창의성 수준 0.0-1.0 (기본: 0.1)
-  --max-retries N         재시도 횟수 (기본: 3)
-  --genre GENRE           장르 (fantasy/sci-fi/romance/mystery/horror/general)
-  --cache                 번역 캐싱 활성화
-  --verbose              상세 출력 모드
+  -f, --file <file>         EPUB 파일 경로 (필수)
+  -o, --output-dir <dir>    출력 디렉토리
+  --max-chunk-size <size>   최대 청크 크기 (기본값: 3000)
+  --min-chunk-size <size>   최소 청크 크기 (기본값: 1000)
+  --extract-only            청크 없이 원본 HTML만 추출
+  --no-chunks               챕터 파일만 생성
+  -v, --verbose             상세한 출력 표시
 ```
 
-#### build - 한글 EPUB 생성
+**translate** - 추출된 청크를 한글로 번역
 ```bash
-python3 -m epub_extractor.cli build [OPTIONS] ORIGINAL_EPUB TRANSLATED_DIR
+./translation.sh translate -i "novel/" [OPTIONS]
 
 옵션:
-  --output FILE          출력 파일명 (기본: 원본명-ko.epub)
-  --verbose             상세 출력 모드
+  -i, --input-dir <dir>     입력 디렉토리 (필수)
+  -o, --output-dir <dir>    출력 디렉토리 (기본값: translated/)
+  -m, --model <model>       사용할 Ollama 모델 (기본값: gpt-oss:20b)
+  -g, --genre <genre>       소설 장르 (기본값: fantasy)
+  --temperature <temp>      번역 온도 (기본값: 0.1)
+  --max-retries <num>       최대 재시도 횟수 (기본값: 3)
+  --resume                  이전 번역 작업 이어서 진행
+  -v, --verbose             상세한 출력 표시
+```
+
+**combine** - 번역된 청크를 EPUB으로 통합
+```bash
+./translation.sh combine -f "novel.epub" -i "translated/" [OPTIONS]
+
+옵션:
+  -f, --original-file <file>    원본 EPUB 파일 (필수)
+  -i, --input-dir <dir>         번역 디렉토리 (필수)
+  -o, --output-file <file>      출력 EPUB 파일 (기본값: 원본-ko.epub)
+  -v, --verbose                 상세한 출력 표시
+```
+
+**full** - 전체 워크플로우 (추출 → 번역 → 통합)
+```bash
+./translation.sh full -f "novel.epub" [OPTIONS]
+
+옵션:
+  -f, --file <file>             EPUB 파일 경로 (필수)
+  -w, --work-dir <dir>          작업 디렉토리 (기본값: 파일명)
+  -m, --model <model>           사용할 Ollama 모델 (기본값: gpt-oss:20b)
+  -g, --genre <genre>           소설 장르 (기본값: fantasy)
+  --max-chunk-size <size>       최대 청크 크기 (기본값: 3000)
+  --temperature <temp>          번역 온도 (기본값: 0.1)
+  -v, --verbose                 상세한 출력 표시
+```
+
+### Python CLI 직접 사용
+
+기존 Python CLI도 여전히 사용 가능합니다:
+
+```bash
+# EPUB 텍스트 추출
+python3 -m epub_extractor.cli extract "novel.epub" --max-chunk-size 2000
+
+# 번역 실행
+python3 -m epub_extractor.cli translate "novel/" "translated/" --model gpt-oss:20b
+
+# 한글 EPUB 생성
+python3 -m epub_extractor.cli build "novel.epub" "translated/" --output "novel-ko.epub"
 ```
 
 ### 설정 파일 (config/config.py)
@@ -174,30 +222,42 @@ ls sample_translation_work/translated_chunks/ | wc -l
 
 ## 🎯 사용 예제
 
-### 기본 번역
+### 기본 번역 (완전 자동화)
 ```bash
-# 가장 간단한 사용법
-python3 -m epub_extractor.cli translate "Harry Potter.epub"
+# 가장 간단한 사용법 - 한 번의 명령으로 모든 과정 수행
+./translation.sh full -f "Harry Potter.epub"
 ```
 
 ### 고급 설정으로 번역
 ```bash
 # SF 소설을 다른 모델로 번역
-python3 -m epub_extractor.cli translate "Dune.epub" \
-  --model llama3:8b \
-  --genre sci-fi \
-  --temperature 0.2 \
-  --cache
+./translation.sh full -f "Dune.epub" \
+  -m llama3:8b \
+  -g sci-fi \
+  --temperature 0.2
 ```
 
-### 대용량 파일 처리
+### 단계별 수동 실행
 ```bash
-# 작은 청크로 분할하여 메모리 효율적 처리
-./extract.sh "LargeNovel.epub" --max-chunk-size 1000
+# 1단계: 추출
+./translation.sh extract -f "LargeNovel.epub" --max-chunk-size 1000
 
-# 번역 실행
-python3 -m epub_extractor.cli translate "LargeNovel.epub" \
-  --max-retries 5
+# 2단계: 번역 (재개 기능 활용)
+./translation.sh translate -i "LargeNovel/" \
+  -m gpt-oss:20b \
+  --max-retries 5 \
+  --resume
+
+# 3단계: 통합
+./translation.sh combine -f "LargeNovel.epub" -i "LargeNovel/translated/"
+```
+
+### 배치 처리
+```bash
+# 여러 EPUB 파일 일괄 번역
+for epub in *.epub; do
+  ./translation.sh full -f "$epub" -m gpt-oss:20b -v
+done
 ```
 
 ## 🐛 문제 해결
@@ -217,16 +277,16 @@ ollama pull gpt-oss:20b
 ### 메모리 부족
 ```bash
 # 청크 크기 줄이기
-./extract.sh "book.epub" --max-chunk-size 1000
+./translation.sh extract -f "book.epub" --max-chunk-size 1000
 
 # GPU 메모리 조절 (NVIDIA)
 export OLLAMA_NUM_GPU_LAYERS=20
 ```
 
 ### 번역 품질 개선
-- Temperature 낮추기: `--temperature 0.0`
-- 장르 정확히 지정: `--genre fantasy`
-- 더 큰 모델 사용: `--model gpt-oss:20b`
+- Temperature 낮추기: `./translation.sh translate -i novel/ --temperature 0.0`
+- 장르 정확히 지정: `./translation.sh translate -i novel/ --genre fantasy`
+- 더 큰 모델 사용: `./translation.sh translate -i novel/ --model gpt-oss:20b`
 
 ## 🧪 개발 및 테스트
 
@@ -272,18 +332,19 @@ pre-commit install
 
 ### 성능 최적화
 - **병렬 처리**: 여러 EPUB 파일 동시 번역 가능
-- **캐싱 활용**: `--cache` 옵션으로 재번역 속도 향상
+- **재개 기능 활용**: `--resume` 옵션으로 중단된 번역 이어서 진행
 - **청크 크기 조절**: 파일 크기에 맞게 청크 크기 최적화
 
 ### 번역 품질
-- **장르 설정**: 정확한 장르 지정으로 번역 품질 향상
-- **Temperature 조절**: 0.0-0.3 범위 권장
-- **모델 선택**: 대용량 모델일수록 품질 향상
+- **장르 설정**: 정확한 장르 지정으로 번역 품질 향상 (`-g fantasy`)
+- **Temperature 조절**: 0.0-0.3 범위 권장 (`--temperature 0.1`)
+- **모델 선택**: 대용량 모델일수록 품질 향상 (`-m gpt-oss:20b`)
 
 ### 디버깅
-- **Verbose 모드**: `--verbose`로 상세 로그 확인
+- **Verbose 모드**: `-v` 또는 `--verbose`로 상세 로그 확인
 - **임시 파일 보존**: 디버깅 시 작업 디렉토리 확인
-- **단계별 실행**: 문제 구간 파악을 위한 수동 실행
+- **단계별 실행**: 문제 구간 파악을 위한 extract/translate/combine 개별 실행
+- **통합 스크립트**: 컬러 로그와 진행 상황 실시간 확인
 
 ## 📚 지원 형식
 
