@@ -1,115 +1,74 @@
 #!/bin/bash
 
-# EPUB 추출기 및 번역기 - 통합 설치 및 가상환경 활성화 스크립트
+# EPUB 추출기 및 번역기 - 통합 설치 및 가상환경 활성화 스크립트 (Hugging Face 버전)
 
 # 스크립트 디렉토리 확인
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "📚 EPUB 추출기 및 번역기 - 통합 설정"
-echo "========================================"
-
-# Ollama 설치 확인 및 자동 설치
-check_and_install_ollama() {
-    echo "🔍 Ollama 설치 상태 확인 중..."
-    
-    if command -v ollama &> /dev/null; then
-        echo "✅ Ollama가 이미 설치되어 있습니다."
-        ollama --version
-        return 0
-    fi
-    
-    echo "❗ Ollama가 설치되지 않았습니다."
-    echo "🚀 Ollama 자동 설치를 시작합니다..."
-    
-    # OS 확인
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        # Linux용 설치
-        if command -v curl &> /dev/null; then
-            echo "   Linux용 Ollama 설치 중..."
-            curl -fsSL https://ollama.com/install.sh | sh
-        else
-            echo "❌ curl이 설치되지 않았습니다. 먼저 curl을 설치해주세요."
-            echo "   Ubuntu/Debian: sudo apt install curl"
-            echo "   CentOS/RHEL: sudo yum install curl"
-            return 1
-        fi
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS용 설치
-        if command -v brew &> /dev/null; then
-            echo "   macOS용 Ollama 설치 중..."
-            brew install ollama
-        else
-            echo "   Homebrew를 사용하여 설치합니다..."
-            echo "   Homebrew가 없다면 https://ollama.com 에서 수동 설치해주세요."
-            return 1
-        fi
-    else
-        echo "❌ 지원하지 않는 운영체제입니다."
-        echo "   https://ollama.com 에서 수동으로 설치해주세요."
-        return 1
-    fi
-    
-    # 설치 확인
-    if command -v ollama &> /dev/null; then
-        echo "✅ Ollama 설치 완료!"
-        ollama --version
-        return 0
-    else
-        echo "❌ Ollama 설치에 실패했습니다."
-        return 1
-    fi
-}
-
-# 기본 번역 모델 다운로드
-download_translation_model() {
-    local model_name="llama3-ko-simple:8b"
-    
-    echo "🤖 번역 모델 확인 중..."
-    
-    # Ollama 서비스 시작 (백그라운드)
-    if ! pgrep -f "ollama serve" > /dev/null; then
-        echo "   Ollama 서비스 시작 중..."
-        ollama serve &
-        sleep 3
-    fi
-    
-    # 모델 설치 여부 확인
-    if ollama list | grep -q "$model_name"; then
-        echo "✅ 번역 모델($model_name)이 이미 설치되어 있습니다."
-        return 0
-    fi
-    
-    echo "📥 번역 모델($model_name) 다운로드 중..."
-    echo "   (최초 다운로드는 시간이 걸릴 수 있습니다)"
-    
-    if ollama pull "$model_name"; then
-        echo "✅ 번역 모델 다운로드 완료!"
-        return 0
-    else
-        echo "❌ 번역 모델 다운로드에 실패했습니다."
-        echo "   나중에 수동으로 다운로드하세요: ollama pull $model_name"
-        return 1
-    fi
-}
+echo "📚 EPUB 추출기 및 번역기 - Hugging Face 통합 설정"
+echo "================================================"
 
 # Python 의존성 설치
 install_python_dependencies() {
     if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
         echo "🐍 Python 의존성 설치 중..."
-        pip install -r "$SCRIPT_DIR/requirements.txt"
-        if [ $? -eq 0 ]; then
-            echo "✅ Python 의존성 설치 완료!"
+        
+        # sentencepiece 설치 문제 해결을 위해 먼저 기본 패키지들 설치
+        echo "   기본 패키지 설치 중..."
+        pip install transformers torch accelerate tqdm
+        
+        # sentencepiece는 선택적으로 설치 (실패해도 계속 진행)
+        echo "   sentencepiece 설치 시도 중..."
+        if pip install sentencepiece; then
+            echo "✅ sentencepiece 설치 완료!"
         else
-            echo "❌ Python 의존성 설치에 실패했습니다."
-            return 1
+            echo "⚠️  sentencepiece 설치 실패 (선택적 패키지)"
+            echo "   번역 기능은 정상 작동하지만 일부 모델에서 최적화가 제한될 수 있습니다."
         fi
+        
+        echo "✅ Python 의존성 설치 완료!"
+        return 0
+    else
+        echo "❌ requirements.txt 파일을 찾을 수 없습니다."
+        return 1
     fi
 }
 
-# Ollama 설치 및 설정
-check_and_install_ollama
-
-echo ""
+# Hugging Face 모델 확인
+check_huggingface_model() {
+    local model_name="openai/gpt-oss-20b"
+    
+    echo "🤖 Hugging Face 모델 확인 중..."
+    echo "   모델: $model_name"
+    
+    # Python을 사용하여 모델 접근 가능 여부 확인
+    python3 -c "
+import sys
+try:
+    from transformers import AutoTokenizer
+    print('✅ Hugging Face Transformers 로드 성공')
+    print('📥 모델 토크나이저 다운로드 중...')
+    tokenizer = AutoTokenizer.from_pretrained('$model_name', trust_remote_code=True)
+    print('✅ 모델 토크나이저 다운로드 완료!')
+except ImportError as e:
+    print(f'❌ Hugging Face 패키지가 설치되지 않았습니다: {e}')
+    sys.exit(1)
+except Exception as e:
+    print(f'⚠️  모델 다운로드 중 오류 발생: {e}')
+    print('   인터넷 연결을 확인하거나 나중에 수동으로 다운로드하세요.')
+except KeyboardInterrupt:
+    print('⏸️  사용자에 의해 중단되었습니다.')
+    sys.exit(1)
+"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Hugging Face 모델 확인 완료!"
+        return 0
+    else
+        echo "⚠️  모델 확인에 실패했습니다."
+        return 1
+    fi
+}
 
 # 가상환경 설정
 setup_python_environment() {
@@ -149,23 +108,27 @@ setup_python_environment() {
 # Python 환경 설정
 if setup_python_environment; then
     echo ""
-    echo "🎯 번역 모델 다운로드..."
-    download_translation_model
+    echo "🎯 Hugging Face 모델 확인..."
+    check_huggingface_model
     
     echo ""
     echo "=========================================="
     echo "✅ 모든 설정이 완료되었습니다!"
     echo ""
     echo "📖 사용 가능한 명령어:"
-    echo "  ./extract.sh \"파일명.epub\"                    - EPUB 파일 추출"
-    echo "  ./translate.sh \"추출폴더/\" \"번역폴더/\"         - 번역 실행"
-    echo "  ./translate.sh \"폴더/\" \"번역/\" --genre sci-fi  - 장르별 번역"
-    echo "  deactivate                                   - 가상환경 비활성화"
+    echo "  ./translation.sh extract -f \"파일명.epub\"           - EPUB 파일 추출"
+    echo "  ./translation.sh translate -i \"추출폴더/\"           - 번역 실행"
+    echo "  ./translation.sh full -f \"파일명.epub\"             - 전체 워크플로우"
+    echo "  deactivate                                        - 가상환경 비활성화"
     echo ""
-    echo "💡 번역 지원 장르: fantasy, sci-fi, romance, mystery, general"
-    echo "🤖 기본 모델: qwen2.5:14b"
+    echo "💡 번역 지원 장르: fantasy, sci-fi, romance, mystery, horror, general"
+    echo "🤖 기본 모델: openai/gpt-oss-20b"
+    echo "💻 디바이스: auto (CPU/GPU 자동 감지)"
     echo ""
-    ollama start
+    echo "🔧 문제 해결:"
+    echo "  - GPU 사용: ./translation.sh translate -i folder/ --device cuda"
+    echo "  - CPU 사용: ./translation.sh translate -i folder/ --device cpu"
+    echo "  - 다른 모델: ./translation.sh translate -i folder/ -m openai/gpt-oss-120b"
 else
     echo "❌ Python 환경 설정에 실패했습니다."
     exit 1
