@@ -13,18 +13,9 @@ install_python_dependencies() {
     if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
         echo "🐍 Python 의존성 설치 중..."
         
-        # sentencepiece 설치 문제 해결을 위해 먼저 기본 패키지들 설치
+        # 기본 패키지들 설치
         echo "   기본 패키지 설치 중..."
         pip install transformers torch accelerate tqdm
-        
-        # sentencepiece는 선택적으로 설치 (실패해도 계속 진행)
-        echo "   sentencepiece 설치 시도 중..."
-        if pip install sentencepiece; then
-            echo "✅ sentencepiece 설치 완료!"
-        else
-            echo "⚠️  sentencepiece 설치 실패 (선택적 패키지)"
-            echo "   번역 기능은 정상 작동하지만 일부 모델에서 최적화가 제한될 수 있습니다."
-        fi
         
         echo "✅ Python 의존성 설치 완료!"
         return 0

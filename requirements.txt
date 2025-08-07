@@ -19,6 +19,5 @@ transformers>=4.35.0     # Hugging Face Transformers
 torch>=2.0.0             # PyTorch
 accelerate>=0.20.0       # Hugging Face Accelerate
 tqdm>=4.60.0             # 진행 상황 표시
-# sentencepiece>=0.1.99  # SentencePiece 토크나이저 (선택적 - 설치 실패 시 건너뛰기)
 #
 # Python 버전 요구사항: >= 3.8

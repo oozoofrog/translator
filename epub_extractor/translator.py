@@ -16,7 +16,7 @@ try:
     from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
     import torch
 except ImportError:
-    raise ImportError("Hugging Face 패키지가 설치되지 않았습니다. 'pip install transformers torch accelerate sentencepiece'로 설치해주세요.")
+    raise ImportError("Hugging Face 패키지가 설치되지 않았습니다. 'pip install transformers torch accelerate'로 설치해주세요.")
 
 from .prompts import get_translation_prompt, get_system_prompt
 
