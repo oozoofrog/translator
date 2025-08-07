@@ -417,8 +417,6 @@ def print_translate_banner(args):
     print(f"🌡️ 온도: {args.temperature}")
     print("⚡ 처리 방식: 순차 처리")
     print(f"💾 캐싱: {'활성화' if not args.no_cache else '비활성화'}")
-    if args.num_gpu_layers:
-        print(f"🎮 GPU 레이어: {args.num_gpu_layers}")
     if args.resume:
         print("🔄 모드: 이어서 진행")
     print()
