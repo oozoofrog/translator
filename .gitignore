@@ -75,3 +75,5 @@ data/processed/
 # Test/coverage
 .pytest_cache/
 .coverage
+
+sample/
