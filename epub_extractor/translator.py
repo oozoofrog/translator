@@ -31,9 +31,14 @@ class HuggingFaceTranslator:
         self.genre = genre
         self.translation_prompt = get_translation_prompt(genre)
         
-        # 디바이스 설정
-        if device is None:
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        # 디바이스 설정 (MPS, CUDA, CPU 순서로 우선순위)
+        if device is None or device == "auto":
+            if torch.cuda.is_available():
+                self.device = "cuda"
+            elif torch.backends.mps.is_available():
+                self.device = "mps"
+            else:
+                self.device = "cpu"
         else:
             self.device = device
             
@@ -56,13 +61,53 @@ class HuggingFaceTranslator:
             # 토크나이저 로드
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             
-            # 모델 로드
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto" if self.device == "cuda" else None,
-                low_cpu_mem_usage=True
-            )
+            # 모델 로드 (MPS, CUDA, CPU 지원)
+            if self.device == "cuda":
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    torch_dtype=torch.float16,
+                    device_map="auto",
+                    low_cpu_mem_usage=True
+                )
+            elif self.device == "mps":
+                # MPS에서 MXFP4 양자화 모델 지원을 위한 설정
+                try:
+                    # 먼저 기본 설정으로 시도
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        torch_dtype=torch.float16,
+                        low_cpu_mem_usage=True,
+                        trust_remote_code=True,    # 원격 코드 신뢰
+                        attn_implementation="eager",  # 어텐션 구현 방식
+                        load_in_8bit=False,       # 8bit 양자화 비활성화
+                        load_in_4bit=False        # 4bit 양자화 비활성화
+                    )
+                    self.model = self.model.to("mps")
+                except Exception as mps_error:
+                    print(f"⚠️  MPS에서 모델 로드 실패: {mps_error}")
+                    print("🔄 CPU로 대체하여 로드 중...")
+                    # MPS 실패 시 CPU로 대체
+                    self.device = "cpu"
+                    try:
+                        self.model = AutoModelForCausalLM.from_pretrained(
+                            self.model_name,
+                            torch_dtype=torch.float32,
+                            low_cpu_mem_usage=True,
+                            trust_remote_code=True,
+                            load_in_8bit=False,
+                            load_in_4bit=False
+                        )
+                    except Exception as cpu_error:
+                        print(f"❌ CPU에서도 모델 로드 실패: {cpu_error}")
+                        print("💡 이 모델은 특별한 GPU 요구사항이 있습니다.")
+                        print("   다른 모델을 사용하거나 GPU 환경에서 실행해주세요.")
+                        raise
+            else:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    torch_dtype=torch.float32,
+                    low_cpu_mem_usage=True
+                )
             
             # 패딩 토큰 설정
             if self.tokenizer.pad_token is None:
@@ -74,7 +119,7 @@ class HuggingFaceTranslator:
                 model=self.model,
                 tokenizer=self.tokenizer,
                 device=self.device,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+                torch_dtype=torch.float16 if self.device in ["cuda", "mps"] else torch.float32
             )
             
             print(f"✅ 모델 로드 완료!")
@@ -99,18 +144,37 @@ class HuggingFaceTranslator:
         system_prompt = get_system_prompt()
         translation_prompt = self.translation_prompt
         
+        # 모델의 최대 시퀀스 길이 확인
+        max_model_length = self.tokenizer.model_max_length if hasattr(self.tokenizer, 'model_max_length') else 1024
+        
+        # 입력 텍스트가 너무 길면 자르기 (더 관대한 길이 설정)
+        max_text_length = max_model_length - 512  # 512는 프롬프트와 생성 토큰을 위한 여유 공간
+        encoded_text = self.tokenizer.encode(text)
+        
+        if len(encoded_text) > max_text_length:
+            # 텍스트를 자르기 (문장 단위로 자르기 시도)
+            truncated_text = self.tokenizer.decode(encoded_text[:max_text_length], skip_special_tokens=True)
+            # 마지막 완전한 문장으로 자르기
+            sentences = truncated_text.split('.')
+            if len(sentences) > 1:
+                truncated_text = '.'.join(sentences[:-1]) + '.'
+            text = truncated_text
+            print(f"⚠️  텍스트가 너무 길어서 자릅니다. (최대 길이: {max_text_length} 토큰)")
+        
         full_prompt = f"{system_prompt}\n\n{translation_prompt}\n\n영어 텍스트:\n{text}\n\n한국어 번역:\n"
         
         for attempt in range(self.max_retries):
             try:
-                # 텍스트 생성
+                # 텍스트 생성 (모델의 최대 길이 고려)
                 outputs = self.pipeline(
                     full_prompt,
-                    max_length=len(self.tokenizer.encode(full_prompt)) + 1000,
+                    max_new_tokens=512,  # 새로 생성할 토큰 수 증가
                     temperature=self.temperature,
                     do_sample=True,
                     pad_token_id=self.tokenizer.eos_token_id,
-                    num_return_sequences=1
+                    num_return_sequences=1,
+                    truncation=True,  # 자동 자르기 활성화
+                    max_length=max_model_length  # 모델의 최대 길이 사용
                 )
                 
                 # 결과 추출

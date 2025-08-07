@@ -151,7 +151,7 @@ def _add_translate_arguments(parser):
 
     parser.add_argument("--no-cache", action="store_true", help="번역 캐싱 비활성화")
 
-    parser.add_argument("--device", choices=["cpu", "cuda", "auto"], default="auto", help="사용할 디바이스 (기본값: auto)")
+    parser.add_argument("--device", choices=["cpu", "cuda", "mps", "auto"], default="auto", help="사용할 디바이스 (기본값: auto)")
 
     parser.add_argument("--verbose", "-v", action="store_true", help="상세한 출력 표시")
 
